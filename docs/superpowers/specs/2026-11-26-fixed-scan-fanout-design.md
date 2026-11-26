@@ -49,3 +49,8 @@ observations at 4/64/256 bits, four replay forms under 10 seconds and 512 MiB;
 record equivalent parent/current controls. Full make check, affected sanitizers,
 C++ quality and packaging precede one fresh final review. Merge into master,
 verify, push and delete only this owned task branch after the gates pass.
+
+Review repair: ResetPort forwarding is bit-specific, including vector wrappers
+with ascending/descending indices. Trace the selected source using the existing
+netlist offset convention; unrelated sibling dependencies do not change that
+proof. Keep rejecting an unsupported dependency on the selected bit itself.

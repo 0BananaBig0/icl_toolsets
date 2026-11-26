@@ -65,7 +65,15 @@ shared_input_paths_, Frame.loads and Replay; no public API changes.
 
 ## Branch completion
 
-- [ ] One fresh whole-branch review; grade every finding and declined area.
+- [x] One fresh whole-branch review; grade every finding and declined area.
   One Critical/Important RED→GREEN repair pass with green whole suite; defer Minors.
 - [ ] Merge into recorded parent master, verify merged source/products and
   focused tests, push and delete the owned branch. Archive only this task ledger.
+
+Review repair: a fourteenth CLI method reproduces selected vector ResetPort
+forwarding failures on both pre-fix executables (16 subtest failures). Follow
+the bound source at Offset(source, reset.index), retaining the inactive-reset
+checks and selected dynamic-bit rejection. All 42 fresh qualification commands
+pass, with 223 Python suite runs and 3,441 tests, 28 sanitizer checks, six quality
+checks and refreshed 45-point measurements. The Important is resolved in one
+pass without rereview; two Minors are deferred (33 total including 31 inherited).

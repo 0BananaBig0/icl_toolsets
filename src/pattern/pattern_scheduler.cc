@@ -393,14 +393,12 @@ class ScanScheduler::Impl {
                 const auto& source = netlist.nodes[reset.node];
                 const auto input = source.inputs.find("Source");
                 if (source.kind != "ResetPort" ||
-                    (input == source.inputs.end() && source.scope != 0) ||
-                    (input != source.inputs.end() &&
-                     input->second.size() != 1)) {
+                    (input == source.inputs.end() && source.scope != 0)) {
                   throw std::runtime_error(
                       "fixed scan fanout requires invariant inactive resets");
                 }
                 if (input == source.inputs.end()) break;
-                reset = input->second.front();
+                reset = input->second.at(Offset(source, reset.index));
               }
               fanout_reset_checks_.insert(id);
             }

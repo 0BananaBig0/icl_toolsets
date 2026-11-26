@@ -573,7 +573,7 @@ word matches the most significant prefix of the longest word. For a four-bit ban
 and a two-bit bank directly on one input, loads 13 and 3 are compatible; 13 and 1
 are incompatible. For SI -> A4 -> B4, outputs observing A and B use one eight-tick
 stream, and shared A clocks once. New unequal/overlapping/wire geometries require
-inactive constant/global resets or ResetPort forwarding to a root ResetPort;
+inactive constant/global resets or selected-bit ResetPort forwarding to a root ResetPort;
 register-controlled reset dependencies require separate event scheduling.
 For two four-bit banks directly connected to one input, writing both to 9 works;
 writing one to 9 and the other to 6 cannot be scheduled. Unrequested payload bits retain

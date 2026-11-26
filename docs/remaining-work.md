@@ -1866,9 +1866,9 @@ named/client/TAP sharing remain pending; this increment does not close items
 2/3/6/8 or the excluded strict coverage item 1.
 
 All 42 qualification commands pass. The full normal/static check reports 223
-Python suite runs and 3,439 tests, with five optional ANTLR reference skips.
+Python suite runs and 3,441 tests, with five optional ANTLR reference skips.
 All 15 native sanitizer suites and 13 affected CLI/corpus sanitizer checks pass,
-along with six changed-code C++ quality checks and source packaging. Thirteen
+along with six changed-code C++ quality checks and source packaging. Fourteen
 new CLI methods exercise original/flat/generated replay and prefix histories.
 The native independent scalar oracle checks literal input 01011011, eight
 simultaneous ticks, final A/B/C values 13/2/10, captured return delays and rollback.
@@ -1876,15 +1876,24 @@ simultaneous ticks, final A/B/C values 13/2/10, captured return delays and rollb
 Three rounds of nine fanout cases and 18 matched parent/current disjoint controls
 cover 45 measured points, 180 CLI processes and three Python runners. The matrix
 covers 2/8/32 observations at 4/64/256 bits; its slowest four-form fanout replay is
-0.3035 seconds and runner/children peak RSS is 92,564 KiB. All points meet
+0.3252 seconds and runner/children peak RSS is 92,696 KiB. All points meet
 10 seconds/512 MiB, and all matched disjoint outputs are byte-identical. No
 isolated speedup, larger-network, live-device or new vendor claim is made.
 
 Evidence under build/fixed-scan-fanout-20261126/ binds 4,123 source/test inputs and
 44 executables. Historical fixture failures and a measurement/build relink race
-are retained separately. Six unchanged-input successful checks were reused after
-the final shared-output caller-test update; the full suite, affected caller,
-sanitizers, packaging and final hashes are current. Replacing obsolete topology
-negatives with valid boundaries and positive fanout coverage resolves Task191's
-test-precision Minor; 31 inherited deferred Minors remain. Final review and
-integration are pending.
+are retained separately. The complete 42-command qualification and measurements
+are fresh after the review repair. Replacing obsolete topology negatives with
+valid boundaries and positive fanout coverage resolves Task191's test-precision
+Minor; 31 inherited deferred Minors remain.
+
+Independent review found zero Critical, one Important and two Minor issues.
+One test-first repair follows the selected bit through intermediate ResetPort
+buses, including ascending/descending nonzero indices. An unrelated dynamic
+sibling does not reject an invariant selected bit; selecting the dynamic bit
+still rejects. Sixteen passing-case subtests fail on the pre-fix normal/static
+executables, then the new regression and complete qualification pass after the
+minimal offset fix. No second review was used. The two Minors remain deferred:
+scale assertions check only the common bank's literal write, and concrete replay
+retains redundant per-observation input work. There are 33 deferred Minors total;
+no Critical or Important issue remains unresolved. Integration is pending.

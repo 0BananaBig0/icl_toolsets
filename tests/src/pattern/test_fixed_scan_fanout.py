@@ -158,6 +158,40 @@ Module Chains { ScanInPort si;
                 self.reject(source, 'iWrite a 13; iWrite cell.b 5; iApply;',
                             'no schedule within')
 
+    def test_selected_reset_bus_bit_ignores_unrelated_sibling(self):
+        for left, right in ((3, 2), (2, 3)):
+            for dynamic_sibling in (False, True):
+                with self.subTest(left=left, right=right, dynamic=dynamic_sibling):
+                    binding = 'reset_gate, global[4]' if dynamic_sibling else 'global'
+                    source = f'''Module Cell {{
+ ScanInPort si; ResetPort rst;
+ ScanRegister a[3:0] {{ScanInSource si; CaptureSource a; ResetValue 0;}}
+ ScanRegister b[1:0] {{ScanInSource si; CaptureSource b; ResetValue 0;}}
+ ScanOutPort oa {{Source a[0];}} ScanOutPort ob {{Source b[0];}}
+}}
+Module Middle {{
+ ScanInPort si; ResetPort carry[{left}:{right}];
+ Instance cell Of Cell {{InputPort si=si; InputPort rst=carry[{right}];}}
+ ScanOutPort oa {{Source cell.oa;}} ScanOutPort ob {{Source cell.ob;}}
+}}
+Module Chains {{
+ ScanInPort si; ResetPort global[5:4]; DataInPort control;
+ DataMux reset_gate SelectedBy control {{1'b0:global[5];1'b1:1'b1;}}
+ Instance mid Of Middle {{InputPort si=si; InputPort carry={binding};}}
+ ScanOutPort oa {{Source mid.oa;}} ScanOutPort ob {{Source mid.ob;}}
+}}'''
+                    self.assert_prefix_notes(
+                        source, 'iReset; iWrite mid.cell.a 13; iWrite mid.cell.b 3; iApply; '
+                        'iRead mid.cell.a 0bx; iRead mid.cell.b 0bx; iApply;\n',
+                        'iNote [iGetReadData mid.cell.a -bin]; '
+                        'iNote [iGetReadData mid.cell.b -bin]; iNote [iGetStatus];\n',
+                        [b'0b1101', b'0b11', b'0'])
+                    if dynamic_sibling:
+                        source = source.replace(f'InputPort rst=carry[{right}]',
+                                                f'InputPort rst=carry[{left}]')
+                        self.reject(source, 'iWrite mid.cell.a 13; iWrite mid.cell.b 3; iApply;',
+                                    'invariant inactive resets')
+
     def test_fixed_fanout_scale(self):
         for count in (2, 8, 32):
             for width in (4, 64, 256):
