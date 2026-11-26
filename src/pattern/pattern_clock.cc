@@ -188,6 +188,23 @@ void SystemClocks::Override(const Operation& operation, z3::context& context,
         !options.count("-source")) {
       throw std::runtime_error("clock override requires a source");
     }
+    // Complete overrides already preserve their argument spelling and order.
+    if (normalized && options.size() != 3) {
+      const auto& reference = definition.source;
+      if (reference.node >= netlist_.nodes.size() || reference.inverted ||
+          !ClockPort(netlist_.nodes.at(reference.node))) {
+        throw std::runtime_error(
+            "retained clock override requires a representable clock-port "
+            "source; specify -source explicitly");
+      }
+      rendered.arguments = {Name(target),
+                            "-source",
+                            Name({reference.node, reference.index}),
+                            "-freqMultiplier",
+                            std::to_string(definition.multiplier),
+                            "-freqDivider",
+                            std::to_string(definition.divider)};
+    }
   }
   BuildSafety();
   if (unsafe_.count(target)) {
