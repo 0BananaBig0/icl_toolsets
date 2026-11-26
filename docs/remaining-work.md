@@ -1712,4 +1712,11 @@ probe. No new certificate is added. Prior parent-matched16/32TAP sanitizer scale
 limits remain unqualified;new scale matrices run normal/static without a
 sanitizer memory guarantee. The separate parent ordinary-only sparse-prefix
 history defect remains follow-up work. Broader original requirements and
-excluded1 remain open. Integration is pending.
+excluded1 remain open. Integration results follow below.
+
+Task189 is merged as 3e5d8c9 and pushed. All eleven merged checks
+pass on identical4092qualified inputs and nine copied executable hashes, covering
+native state/readback and both CLI variants plus the corpus audit. The owned
+task branch is deleted;the reused worktree is detached;117stashes are preserved.
+The Critical and both Important review findings are resolved;
+31inherited Minors, broader original requirements and excluded1 remain open.

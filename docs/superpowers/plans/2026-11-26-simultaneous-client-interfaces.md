@@ -63,7 +63,7 @@ Implementation verification: python3 /tmp/simultaneous-client-interfaces-postrev
 ## Branch review and integration
 
 - [x] Obtain one fresh final review;grade every finding/declined area;fix blockers once.
-- [ ] Merge,verify merged result,push,detach/delete owned branch,archive own ledger.
+- [x] Merge,verify merged result,push,detach/delete owned branch,archive own ledger.
 
 Self-review: one scheduler deliverable plus its proof and consumers. Static
 separation/control eligibility is required before relaxing selection cardinality.
