@@ -11526,6 +11526,8 @@ model for one ToClockPort bit. A missing unit means ns; attached and separate
 units use the existing PDL time-literal grammar, including decimal values and
 supported negative scientific exponents. Supported units are s, ms, us, ns, ps,
 fs and as. The period form cannot include source or frequency options.
+An explicitly empty unit is invalid. Simple level-0 procedure arguments may
+supply the value or unit; their concrete values are validated at invocation.
 
 For example, `iClockOverride pll.osc -period 20 ns; iClock fast;
 iRunLoop 7 -sck fast` emits the compact period `20ns` and retains the logical

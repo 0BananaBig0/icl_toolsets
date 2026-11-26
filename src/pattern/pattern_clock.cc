@@ -108,8 +108,8 @@ void SystemClocks::Override(const Operation& operation, z3::context& context,
   }
   std::set<std::string> options;
   if (period) {
-    const auto value =
-        pdl::NormalizeClockPeriod(args[2], args.size() == 4 ? args[3] : "");
+    const auto value = pdl::NormalizeClockPeriod(
+        args[2], args.size() == 4 ? std::make_optional(args[3]) : std::nullopt);
     definition.oscillator = true;
     definition.multiplier = definition.divider = 1;
     if (normalized) rendered.arguments = {Name(target), "-period", value};

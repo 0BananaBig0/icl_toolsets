@@ -1208,15 +1208,19 @@ void Document::Analyze(std::vector<Command>* commands, Context context,
     }
     if (name == "iClockOverride") {
       if (words.size() > 2 && literal(2) == "-period") {
+        const auto concrete = [&](size_t i) {
+          return words[i].literal ||
+                 (context.level == 0 &&
+                  !(literal(i).rfind("$", 0) == 0 && IsNumber(literal(i))));
+        };
         if (words.size() != 4 && words.size() != 5) {
           Error(words[2].range,
                 "period form expects one value and optional time unit");
-        } else if ((words[3].literal || context.level == 0) &&
-                   (words.size() == 4 || words[4].literal ||
-                    context.level == 0)) {
+        } else if (concrete(3) && (words.size() == 4 || concrete(4))) {
           try {
-            NormalizeClockPeriod(literal(3),
-                                 words.size() == 5 ? literal(4) : "");
+            NormalizeClockPeriod(
+                literal(3), words.size() == 5 ? std::make_optional(literal(4))
+                                              : std::nullopt);
           } catch (const std::runtime_error& error) {
             Error(words[3].range, error.what());
           }
@@ -1744,13 +1748,13 @@ std::string Workspace::Uri(const Document* document) const {
 }
 
 std::string NormalizeClockPeriod(const std::string& value,
-                                 const std::string& unit) {
+                                 const std::optional<std::string>& unit) {
   std::string result;
-  if (!unit.empty()) {
-    if (!IsTimeUnit(unit) || !IsTime(value + "ns")) {
+  if (unit) {
+    if (!IsTimeUnit(*unit) || !IsTime(value + "ns")) {
       throw std::runtime_error("invalid clock period value or time unit");
     }
-    result = value + unit;
+    result = value + *unit;
   } else if (IsTime(value)) {
     result = value;
   } else if (IsTime(value + "ns")) {

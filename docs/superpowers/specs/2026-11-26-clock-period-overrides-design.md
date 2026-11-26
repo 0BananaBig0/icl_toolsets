@@ -26,6 +26,7 @@ program is the selected engineering approach within the delegated task.
   or a unitless value defaulting to ns. Reuse current PDL time spelling rules:
   integer/decimal mantissas, supported negative scientific exponents, and
   s/ms/us/ns/ps/fs/as. Normalize emitted period values to one compact token.
+  Reject an explicitly empty unit; validate simple level-0 formal values when invoked.
 - The period form is exclusive of source/frequency options. A period override
   makes that ToClockPort bit an explicit oscillator root at its checked version.
   Reuse existing name/index/flat-origin resolution; support hierarchy and vectors.

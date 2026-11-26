@@ -3986,6 +3986,19 @@ void TestClockPeriodOverrideSnapshots() {
               scheduler.Value("root") == "x",
           "a rejected period preserves normalized output, clock definitions "
           "and hardware state");
+  rejected = false;
+  try {
+    clocks.Override(
+        {"iClockOverride", {"pll.osc", "-period", "20", ""}, "period:4", {}},
+        context, &normalized);
+  } catch (const std::runtime_error& error) {
+    rejected = std::string(error.what()).find("unit") != std::string::npos;
+  }
+  Require(rejected &&
+              normalized.arguments == std::vector<std::string>({"sentinel"}) &&
+              clocks.Wait("fast", 6, scheduler).second == 2 &&
+              scheduler.Value("value") == "1010",
+          "an explicit empty unit rejects without publishing any state");
 }
 void TestClockOverrideScale() {
   std::string source =

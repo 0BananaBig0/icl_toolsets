@@ -178,10 +178,19 @@ class Formatter(unittest.TestCase):
                 run = self.run_format(header + f'iClockOverride osc -period {period}\n')
                 self.assertEqual(run.returncode, 0, run.stderr)
                 self.assertEqual(self.run_format(run.stdout).stdout, run.stdout)
-            for period in ('0', '0.0e-999ns', '-1ns', '1bogus', '1ns ns'):
+            for period in ('0', '0.0e-999ns', '-1ns', '1bogus', '1ns ns', '20 {}', '20us {}'):
                 run = self.run_format(header + f'iClockOverride osc -period {period}\n')
                 self.assertEqual(run.returncode, 2, run.stderr)
                 self.assertIn('period', run.stderr)
+
+    def test_level_zero_clock_period_formals(self):
+        header = HEADER.replace('iPDLLevel 1', 'iPDLLevel 0')
+        for formals, period in (('p', '$p'), ('p', '$p us'), ('p unit', '$p $unit')):
+            run = self.run_format(header + f'iProc f {{{formals}}} {{'
+                                  f'iClockOverride osc -period {period}}}\n')
+            self.assertEqual(run.returncode, 0, run.stderr)
+        run = self.run_format(header + 'iProc f {p} {iClockOverride osc -period $p+1 us}\n')
+        self.assertEqual(run.returncode, 2)
 
     def test_comments_strings_continuations_and_unknown_commands(self):
         source = HEADER + '# top\niProc run {} {\n# nested\nset s "a; # literal\\ntext"\ncustom {opaque; data} \\\n  more\niWrite reg(7:0) 0xA5; # trailing\niApply\n}\n'
@@ -466,10 +475,10 @@ class LanguageServer(unittest.TestCase):
         self.assertEqual(edits[0]['newText'], expected)
 
     def test_clock_period_diagnostics_are_shared(self):
-        for version, period in enumerate(('17ns', '0ns', '1.25us'), start=1):
+        for version, period in enumerate(('17ns', '0ns', '1.25us', '17 {}'), start=1):
             text = HEADER + f'iClockOverride osc -period {period}\n'
             diagnostics = self.open(text, version)['diagnostics']
-            self.assertEqual(bool(diagnostics), period == '0ns')
+            self.assertEqual(bool(diagnostics), period in ('0ns', '17 {}'))
             if diagnostics:
                 self.assertIn('period', diagnostics[0]['message'])
 

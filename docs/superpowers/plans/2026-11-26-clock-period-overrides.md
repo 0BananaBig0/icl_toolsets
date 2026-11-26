@@ -36,8 +36,9 @@ src/pattern/icl_pattern_generation_main.cc; tests/src/pattern_scheduler_test.cc;
 tests/src/pattern/test_clock_period_overrides.py; tests/src/test_pdl_tools.py;
 Makefile; docs/pattern-generation.md; docs/remaining-work.md.
 
-**Interfaces:** Add shared pdl::NormalizeClockPeriod(value, unit="") returning a
-positive compact time token. Extend SystemClocks::Override with an optional
+**Interfaces:** Add shared pdl::NormalizeClockPeriod(value, unit=std::nullopt) returning a
+positive compact time token, distinguishing an omitted unit from an explicit
+empty unit. Extend SystemClocks::Override with an optional
 Operation* normalized output, default nullptr; add canonical TargetName(text).
 Add a period-root marker to Definition, retaining checked version lookup.
 Append a retain-clock-program flag to private Generate and forward it through
@@ -64,13 +65,13 @@ its recursive local-reset call. No public CLI switch.
 - [x] Measure the nine 2/8/32-bit by 8/128/1024-update programs, five forms each,
   under 10 seconds/512 MiB; compare matched ordinary parent/current programs.
   Expected: exact canonical replay/control bytes with recorded time/RSS/hashes.
-- [ ] Record actual evidence, read the final selected diff and commit with grouped
+- [x] Record actual evidence, read the final selected diff and commit with grouped
   messages. Run task-done with python3 /tmp/clock-period-overrides-check.py.
   Expected: QUALIFIED, exit 0 with final input/product identity.
 
 ## Branch completion
 
-- [ ] One fresh whole-branch review, grading every finding and declined area;
+- [x] One fresh whole-branch review, grading every finding and declined area;
   one Critical/Important test-first repair pass plus a green full suite; defer Minors.
 - [ ] Merge into parent master, verify merged identity and focused checks,
   push and delete only this owned branch; archive only this task ledger.

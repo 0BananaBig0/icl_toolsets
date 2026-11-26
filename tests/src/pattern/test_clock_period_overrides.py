@@ -87,9 +87,12 @@ iReset; iRunLoop 5 -sck cell.out(5)
         self.assertIn('iRunLoop 5 -sck cell.out(5)', output)
 
     def test_invalid_periods_and_partial_mixes_preserve_artifacts(self):
-        for period in ('0', '0.0e-999ns', '-1ns', '1bogus', '1ns ns'):
+        for period in ('0', '0.0e-999ns', '-1ns', '1bogus', '1ns ns', '20 {}', '20us {}'):
             with self.subTest(period=period):
                 self.rejected(OSC, f'iClockOverride osc -period {period}\n', 'period')
+        for value in ('20', '20us'):
+            self.rejected(OSC, f'set unit {{}}; iClockOverride osc -period {value} $unit\n',
+                          'period')
         for override in ('iClockOverride pll.osc -freqDivider 3',
                          'iClockOverride pll.osc -source other',
                          'iClockOverride pll.osc'):
@@ -97,6 +100,46 @@ iReset; iRunLoop 5 -sck cell.out(5)
                 self.rejected(TREE, override + '; iClockOverride pll.osc -period 20ns\n',
                               'period-bearing')
         self.rejected(OSC, 'iClockOverride osc -period 20ns -freqDivider 2\n', 'period')
+
+    def test_level_zero_numeric_formals(self):
+        for formals, period, arguments, expected in (
+                ('p', '$p', '20', '20ns'), ('p', '$p us', '20', '20us'),
+                ('p unit', '$p $unit', '20 ps', '20ps')):
+            with self.subTest(period=period):
+                icl, pdl = self.files(OSC, f'iProc configure {{{formals}}} {{'
+                                     f'iClockOverride osc -period {period}; iClock osc}}; '
+                                     f'iCall configure {arguments}; iRunLoop 3 -sck osc\n')
+                pdl.write_text(pdl.read_text().replace('iPDLLevel 1', 'iPDLLevel 0'))
+                output = self.run_tool(icl, pdl, reset=True)
+                flat = self.root / 'debug/Top.icl'
+                for i, (model, commands) in enumerate(((flat, pdl),
+                                                       (icl, self.root / 'result.pdl'),
+                                                       (flat, self.root / 'result.pdl'),
+                                                       (icl, self.root / 'reset.pdl'))):
+                    self.assertEqual(output, self.run_tool(model, commands,
+                                                          f'formal-{i}/result.pdl'))
+                self.assertIn(f'iClockOverride osc -period {expected}\n', output)
+        icl, pdl = self.files(OSC, 'iProc configure {p} {iClockOverride osc -period $p us}; '
+                             'iCall configure 0\n')
+        pdl.write_text(pdl.read_text().replace('iPDLLevel 1', 'iPDLLevel 0'))
+        target = self.root / 'result.pdl'
+        target.write_text('previous artifact\n')
+        self.assertIn('positive', self.run_tool(icl, pdl, ok=False))
+        self.assertEqual(target.read_text(), 'previous artifact\n')
+
+    def test_encoded_vector_override_source_is_canonical(self):
+        source = '''Module Cell {ClockPort ref[9:8]; ToClockPort out[5:4] {Source ref;}}
+Module Top {ClockPort root[2:1]; Instance c Of Cell {InputPort ref=root;}}'''
+        original = ('iClockOverride c.out(5) -period 7 ps; iClock c.out(5); '
+                    'iClockOverride c.out(4) -source c.ref(8) -freqMultiplier 2 -freqDivider 1; '
+                    'iClock c.out(4); iRunLoop 3 -sck c.out(4); iRunLoop 9 -sck c.out(5)\n')
+        physical = original.replace('c.out', 'n' + b'c.out'.hex()).replace(
+            'c.ref', 'n' + b'c.ref'.hex())
+        output = helpers.SystemClocks.physical_clock_replay(self, source, original, physical)
+        self.assertEqual([line for line in output.splitlines()
+                          if line.startswith('iClockOverride ')], [
+            'iClockOverride c.out(5) -period 7ps',
+            'iClockOverride c.out(4) -source c.ref(8) -freqMultiplier 2 -freqDivider 1'])
 
     def test_local_reset_groups_and_actual_pio_history(self):
         source = TREE.replace('ClockPort root;',
