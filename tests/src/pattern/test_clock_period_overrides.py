@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Explicit periods must survive retargeting with their logical clock snapshots."""
 import json
+import itertools
 import subprocess
 import time
 import unittest
@@ -137,6 +138,21 @@ iClock cell.out[4]; iRunLoop 6 -sck cell.out[4]
         self.assertIn('iClockOverride cell.out(4) -source cell.ck(2) -freqMultiplier 3 -freqDivider 2\n', output)
         self.assertIn('iRunLoop 6 -sck cell.out(5)\n', output)
 
+    def test_complete_mixed_overrides_keep_parent_spelling_and_order(self):
+        source = '''Module Top {ClockPort root; ClockPort other;
+ ToClockPort osc {Period 10ns;}
+ ToClockPort out {Source root; FreqMultiplier 3; FreqDivider 2;}}'''
+        fields = ('-freqDivider 0x04', '-source other', '-freqMultiplier 0b11')
+        for order in itertools.permutations(fields):
+            with self.subTest(order=order):
+                override = 'iClockOverride out ' + ' '.join(order)
+                output = self.replay(source, 'iClockOverride osc -period 10ns; ' +
+                                     override + '; iClock out; iRunLoop 8 -sck out\n')
+                self.assertEqual([line for line in output.splitlines()
+                                  if line.startswith(('iClock ', 'iClockOverride ', 'iRunLoop '))],
+                                 ['iClockOverride osc -period 10 ns', override,
+                                  'iClock out', 'iRunLoop 8 -sck out'])
+
     def test_unrepresentable_mixed_defaults_preserve_artifacts(self):
         source = '''Module Top {ClockPort root; ClockPort other; DataInPort mode;
  ClockMux choose SelectedBy mode {1'b0:root;1'b1:other;}
@@ -145,6 +161,13 @@ iClock cell.out[4]; iRunLoop 6 -sck cell.out[4]
         self.rejected(source, prefix + 'iClockOverride out -freqDivider 5\n',
                       'source')
         output = self.replay(source, prefix + 'iClockOverride out -source other; '
+                             'iClock out; iRunLoop 6 -sck out\n')
+        self.assertIn('iClockOverride out -source other -freqMultiplier 3 -freqDivider 2\n', output)
+        inverted = source.replace('Source choose;', 'Source ~root;')
+        changed = prefix + 'iClockOverride out -source other -freqMultiplier 9 -freqDivider 4; '
+        self.rejected(inverted, changed + 'iClockOverride out -freqMultiplier 5\n',
+                      'representable clock-port source')
+        output = self.replay(inverted, changed + 'iClockOverride out -source other; '
                              'iClock out; iRunLoop 6 -sck out\n')
         self.assertIn('iClockOverride out -source other -freqMultiplier 3 -freqDivider 2\n', output)
         self.rejected(OSC, 'iClockOverride osc -period 20ns; '

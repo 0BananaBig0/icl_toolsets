@@ -11,8 +11,10 @@ omitted source and factors from ICL on each override, as IEEE 1687-2014 section
 7.9.16(c–e), printed 175/PDF189, specifies. The installed Tessent Shell Reference
 Manual v2023.4 iClockOverride topic instead documents retaining some prior fields.
 Emit all three concrete source/ratio fields when main PDL retains clock programs,
-so replay does not depend on that difference. Previously the generator rejected
-every partial mixed form. Ordinary programs keep their current normalization.
+for partial forms so replay does not depend on that difference. Fully specified
+forms preserve their established argument order and numeric spelling. Previously
+the generator rejected every partial mixed form. Ordinary programs keep their
+current normalization.
 
 Keeping the guard leaves valid native operations unsupported. Emulating vendor
 omission rules would change established native semantics. Explicit expansion is

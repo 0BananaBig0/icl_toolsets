@@ -2009,38 +2009,48 @@ coverage item 1 remains excluded.
 
 ## Task195: mixed clock defaults
 
+Independent review found zero Critical, two Important and one Minor issue. One
+test-first repair pass resolves complete-argument compatibility and adds a
+maintained inversion-guard regression. All six complete option permutations
+preserve parent argument order and numeric spelling. The inversion test fails
+when its guard is deliberately removed and passes on the restored source.
+The vendor-wording Minor is deferred, bringing the total to 38.
+
 Valid partial source/ratio overrides in a period-bearing clock program now emit
 all three fields using native ICL defaults. Prior period/source definitions do
 not supply omitted values. Ordinary programs keep their prior normalization.
 Unrepresentable default sources and oscillator-only cases remain guarded; the
 change adds no event or elapsed-time engine.
 
-Both generators pass 14 period methods and five serialization methods. Native
+Both generators pass 15 period methods and five serialization methods. Native
 clock snapshots and all nine changed-code C++ checks pass. All 39 final
-qualification commands pass: 227 Python suite runs report 3,482
+qualification commands pass: 227 Python suite runs report 3,484
 tests with five optional ANTLR skips, all 22 leak-enabled sanitizer checks and
 nine changed-code C++ checks pass, as do corpus and source packaging. Full
-regression takes 1,646.147 seconds and packaging takes 53.695 seconds. The final
-manifest binds 4,125 frozen inputs and 44 executables. Six fresh sequential
+regression takes 1,656.943 seconds and packaging takes 54.306 seconds. The final
+manifest binds 4,125 frozen inputs and 44 executables. Six recorded sequential
 Tessent Shell
 2026.2 jobs pass: three explicit native-default reference/generated pairs have
-byte-identical exports and literal expected relative traces. Fifteen native
-producer runs cover all five replay forms. Original partial source programs are
+byte-identical exports and literal expected relative traces. Fifteen fresh native
+producer runs cover all five replay forms. Every vendor model, PDL and script
+byte matches the pre-review bundle, so the six actual vendor jobs are reused
+after current binary, trace and input identities are rechecked. Original partial
+source programs are
 not vendor-equivalent because their omitted-field rules differ. Exports omit
 period metadata; this is configured relative-operation evidence, not device timing.
 
 Three rounds cover 27 mixed matrix points and 18 matched ordinary controls,
 225 CLI processes and three Python runners. Each point meets 10 seconds/512 MiB;
-the mixed matrix peaks at 0.3328 seconds and 62,376 KiB runner/child RSS. Actual
+the mixed matrix peaks at 0.3572 seconds and 62,300 KiB runner/child RSS. Actual
 inputs and all five output files are hash-bound before temporary cleanup, with
 identical hashes across rounds. Ordinary parent/current outputs are byte-identical.
 Artifact capture I/O is included and measurements overlap qualification; no
 isolated speedup is claimed. Evidence: build/mixed-clock-defaults-20261127/.
 
 The broader inventory and 37 inherited deferred Minors remain open. Item1 stays
-excluded. No fresh review or completed integration is claimed yet.
+excluded. Both Important findings are resolved; integration remains pending.
 
-The initial complete qualification is retained under pre-help-* evidence. A
-necessary compiled-help correction now has a maintained RED→GREEN assertion on
-both generators. The corrected final source passes a new complete frozen
+Earlier complete qualifications are retained under pre-help-* and pre-review-*
+evidence. A necessary compiled-help correction has a maintained RED→GREEN assertion on
+both generators. The repaired final source passes a new complete frozen
 qualification; current measurements and vendor producers use the rebuilt binary.

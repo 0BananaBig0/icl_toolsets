@@ -188,7 +188,8 @@ void SystemClocks::Override(const Operation& operation, z3::context& context,
         !options.count("-source")) {
       throw std::runtime_error("clock override requires a source");
     }
-    if (normalized) {
+    // Complete overrides already preserve their argument spelling and order.
+    if (normalized && options.size() != 3) {
       const auto& reference = definition.source;
       if (reference.node >= netlist_.nodes.size() || reference.inverted ||
           !ClockPort(netlist_.nodes.at(reference.node))) {

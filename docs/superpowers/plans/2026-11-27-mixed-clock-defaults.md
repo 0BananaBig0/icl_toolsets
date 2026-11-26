@@ -34,7 +34,9 @@ update docs/pattern-generation.md and docs/remaining-work.md.
 
 **Interfaces:** Consumes SystemClocks::Override(const Operation&, z3::context&, Operation*)
 and its existing Definition/Name/Target validation. Produces the same API, with
-normalized non-period arguments {target,-source,source,-freqMultiplier,m,-freqDivider,d}.
+partial normalized non-period arguments
+{target,-source,source,-freqMultiplier,m,-freqDivider,d}; already complete forms
+retain their established argument order and spelling.
 
 - [x] Add tests for all eight option subsets on ICL source ck with factors 3/2,
   using values other/7/5 when specified. Assert fully explicit output, restoration
@@ -64,7 +66,7 @@ normalized non-period arguments {target,-source,source,-freqMultiplier,m,-freqDi
 
 ## Branch completion
 
-- [ ] One fresh independent whole-branch review, all findings/declined areas graded,
+- [x] One fresh independent whole-branch review, all findings/declined areas graded,
   one Critical/Important test-first repair pass if required; defer Minors.
 - [ ] Merge into master, verify merged inputs and focused tests, push and delete
   only codex/mixed-clock-defaults; archive only this plan's own workspace.

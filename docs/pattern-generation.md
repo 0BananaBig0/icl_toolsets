@@ -11586,14 +11586,22 @@ emit complete native ICL defaults, including through indexed procedure calls and
 reset-source replay. Native defaults follow IEEE1687-2014 section7.9.16(c–e),
 printed175/PDF189. The Tessent Shell Reference Manual v2023.4 iClockOverride topic
 describes different omission behavior; a vendor reference must explicitly set
-the intended native fields. Six fresh configured Tessent2026.2 jobs pass with three byte-identical explicit-reference/generated exports and
+the intended native fields. Six recorded configured Tessent2026.2 jobs pass with
+three byte-identical explicit-reference/generated exports and
 expected relative-operation traces. These references explicitly implement native
 defaults; original partial inputs retain the vendor dialect difference.
 
-All 39 final qualification commands pass: 227 Python suites report 3,482 tests,
+All 39 final qualification commands pass: 227 Python suites report 3,484 tests,
 with five optional ANTLR skips; all 22 sanitizer checks, nine changed-code C++
 checks, corpus acceptance, editor checks and source packaging pass. The compiled
 help description has a maintained RED→GREEN check on both generators. The first
 qualification is archived under pre-help-*; the full suite was rerun after that
-help-only correction. The final frozen inputs and binaries also bind all 45
-measurements and six vendor jobs. Independent review and integration remain.
+help correction and again after the review repairs. Complete overrides retain
+their established option order and numeric spelling; partial forms expand
+native defaults. Fifteen period methods pass on both generators, including
+all complete-option permutations and an inversion-guard regression verified by
+mutation. The final frozen inputs and binaries also bind all 45
+measurements and vendor comparisons. Fresh native generation confirms every
+vendor input byte is unchanged, allowing reuse of the six actual jobs with
+current binary and trace identities. One review repair pass resolves both
+Important findings; one Minor is deferred. Integration remains pending.
