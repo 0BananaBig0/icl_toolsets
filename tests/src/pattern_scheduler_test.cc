@@ -4559,6 +4559,70 @@ Module SharedTop {
               copy.Value("lo") == "01" && scheduler.Value("a") == "1101",
           "shared-input copy and ownership failure preserve all bank state");
 }
+void TestFixedScanFanout() {
+  pattern::Design design;
+  design.AddIcl("fixed-fanout.icl", R"(
+Module Fanout {
+ ScanInPort si;
+ ScanRegister a[3:0] {ScanInSource si; CaptureSource 4'b0101; ResetValue 0;}
+ ScanRegister b[1:0] {ScanInSource a[0]; CaptureSource 2'b10; ResetValue 0;}
+ ScanRegister c[3:0] {ScanInSource a[0]; CaptureSource 4'b1010; ResetValue 0;}
+ ScanOutPort oa {Source a[0];}
+ ScanOutPort ob {Source b[0];}
+ ScanOutPort oc {Source c[0];}
+})");
+  const auto netlist = pattern::Elaborate(design, "Fanout");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  const auto first = scheduler.Apply({{"iWrite", {"a", "13"}, "write", {}},
+                                      {"iWrite", {"b", "2"}, "write", {}},
+                                      {"iWrite", {"c", "10"}, "write", {}}},
+                                     true);
+  Require(first.size() == 1 && first[0].lanes.size() == 3 &&
+              first[0].loads.size() == 3,
+          "fixed fanout clocks three unique banks through three observations");
+  for (const auto& lane : first[0].lanes) {
+    Require(lane.input == "si" && lane.serial == "01011011",
+            "unequal overlapping paths use the literal eight-tick input");
+  }
+  unsigned a = 5, b = 2, c = 10;
+  std::string returned_a, returned_b, returned_c;
+  for (char input : first[0].lanes[0].serial) {
+    returned_a += (a & 1) ? '1' : '0';
+    returned_b += (b & 1) ? '1' : '0';
+    returned_c += (c & 1) ? '1' : '0';
+    const auto old_a = a;
+    a = (a >> 1) | ((input - '0') << 3);
+    b = (b >> 1) | ((old_a & 1) << 1);
+    c = (c >> 1) | ((old_a & 1) << 3);
+  }
+  Require(a == 13 && b == 2 && c == 10 && scheduler.Value("a") == "1101" &&
+              scheduler.Value("b") == "10" && scheduler.Value("c") == "1010",
+          "independent simultaneous scalar shifts agree with all unique banks");
+  pattern::ScanScheduler copy(scheduler);
+  const auto read = scheduler.Apply({{"iRead", {"a", "5"}, "read", {}},
+                                     {"iRead", {"b", "2"}, "read", {}},
+                                     {"iRead", {"c", "10"}, "read", {}}});
+  Require(
+      read.size() == 1 && read[0].lanes.size() == 3 &&
+          read[0].lanes[0].serial_expected ==
+              returned_a.substr(0, 4) + "xxxx" &&
+          read[0].lanes[1].serial_expected == returned_b.substr(0, 6) + "xx" &&
+          read[0].lanes[2].serial_expected == returned_c,
+      "shared capture words retain their output delays and comparison padding");
+  bool rejected = false;
+  try {
+    copy.Apply({{"iWrite", {"a", "6"}, "blocked", {}},
+                {"iWrite", {"b", "1"}, "blocked", {}},
+                {"iWrite", {"c", "6"}, "blocked", {}}},
+               true, {{netlist.node_ids.at("a"), "1101"}}, false);
+  } catch (const std::exception&) {
+    rejected = true;
+  }
+  Require(rejected && copy.Value("a") == "1101" && copy.Value("b") == "10" &&
+              copy.Value("c") == "1010" && scheduler.Value("a") == "1101",
+          "fanout copy and reservation failure roll back every physical bank");
+}
 void TestSharedScanOutputs() {
   pattern::Design design;
   design.AddIcl("shared-outputs.icl", R"(
@@ -7741,6 +7805,7 @@ int main(int argc, char* argv[]) {
     TestCallbackMergeBarriers();
     TestMergeAnalysisBudget();
     TestSharedScanInputs();
+    TestFixedScanFanout();
     TestSharedScanOutputs();
     TestEnabledScanOutputs();
     TestClientScanControls();

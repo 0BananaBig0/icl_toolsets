@@ -192,13 +192,11 @@ Module Chains { ScanInPort si;
 
     def test_unsupported_shared_routes_remain_guarded(self):
         for source in (
-                NETWORK.replace('b[3:0]', 'b[2:0]'),
-                NETWORK.replace('Source b[0];', 'Source si;'),
-                NETWORK.replace('Source b[0];', 'Source a[0]; Enable 1\'b1;'),
                 NETWORK.replace('Source b[0];', 'Source b[0]; Enable 1\'b1;'),
-                NETWORK.replace('ScanInSource si; CaptureSource b;', 'ScanInSource a[0]; CaptureSource b;')):
+                NETWORK.replace('ScanInSource si; CaptureSource b;', 'ScanInSource a[1]; CaptureSource b;')):
             with self.subTest(source=source):
-                self.reject(source, 'iWrite a 9; iWrite b 9; iApply;')
+                self.reject(source, 'iWrite a 9; iWrite b 9; iApply;',
+                            'rightmost bit' if 'ScanInSource a[1]' in source else 'overlapping-event')
 
     def test_fixed_lane_scale(self):
         for count in (2, 8, 32):
