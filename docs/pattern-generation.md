@@ -11569,6 +11569,7 @@ Fresh paired vendor runs accept the canonical main PDL and match the reference
 exports for the tested configured models. All 39 qualification commands pass,
 including full regression, sanitizers and source packaging. Independent review
 found one benchmark provenance gap, repaired by capturing actual replay artifacts
-and refreshing all measurements; integration remains pending. Use the canonical main PDL for vendor loading. Reset-only output
+and refreshing all measurements. The change is merged and pushed to master;
+all nine merged-result checks pass. Use the canonical main PDL for vendor loading. Reset-only output
 preserves original source and procedure definitions; if it contains native input
 spellings, run it through native generation to obtain canonical main PDL first.

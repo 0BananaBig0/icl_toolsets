@@ -71,5 +71,5 @@ When normalized output is requested, SystemClocks::Override emits arguments
 
 - [x] One fresh whole-branch review; grade every finding/declined area. One
   Critical/Important test-first repair pass and green full suite; defer Minors.
-- [ ] Merge into recorded parent master; check merged identity and focused tests,
+- [x] Merge into recorded parent master; check merged identity and focused tests,
   push, retire only the owned branch and archive only this plan's ledger.
