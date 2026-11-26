@@ -355,16 +355,19 @@ the AST-ID keys alive; cache entries never cross a model. Memory is proportional
 to unique decoded pairs and their word lengths, with logarithmic map lookup.
 No public interface or new dependency is added.
 
-All 450 final matched processes agree with complete parent outputs and actual
-observations: 72 word-decoding cases and 378 merge-history cases. All current
+All 450 final matched processes pass their hardware and applicable observation
+comparisons: 72 word-decoding cases and 378 merge-history cases. The 90
+unobserved merge controls compare against the parent after removing only its
+observation notes; other cases retain complete pattern comparisons. All current
 cases meet unchanged 10s/512MiB regular and 10s/256MiB wide bounds. The word
 matrix covers 64/128/256 connected targets/four groups, 512/1024-bit words,
 16-target sanitizer cases and three source/flat/generated repeats. Matched
 256-target source medians are 9.3949s parent and
 7.9338s current (15.6%
-reduction in these runs). Current word cases peak at
-7.9704s/304852KiB;
-merge cases peak at 0.7677s/438260KiB.
+reduction in these runs). Current and sanitizer word cases peak at 7.9704s/304852KiB;
+merge cases peak at 0.7677s/438260KiB. Both aggregate RSS peaks are from sanitizer
+rows. Wall-time and RSS maxima need not describe the same process; use matched
+normal parent/current rows for performance comparisons.
 Four guide-example processes pass. The parent already contains Task168's
 wide-PIO memory fix; all 378 merge measurements meet their bounds.
 
@@ -1100,8 +1103,10 @@ hardware operation or failure count is injected. Existing modeled dynamic
 controls now use their native notes, with obsolete manual injection removed.
 
 An initial measurement attempt correctly failed all216rows because the shared
-validator expected zero comparison masks. The workload's real masks are uncared
-X. The runner now consumes the fixture's expected history word; no output or
+validator expected zero child SO expectation words in history annotations.
+This workload's child SO expectations contain uncared X; returned miscompare
+masks are zero because those unknown child bits are uncared. The runner now
+checks the fixture's expected SO word in each annotation; no observed output or
 bound was relaxed. The failed rows remain recorded, and final gates were run
 fresh after the correction.
 
@@ -1507,3 +1512,37 @@ Original broader items and excluded1 remain open. Merge/integration is next.
 All41 Task185 merged-result checks pass against identical4,090qualified inputs
 and23copied executables. Master is pushed, the owned task branch is deleted,
 and117stashes remain. Broader inventory work remains open.
+
+## Deferred documentation corrections (Task186)
+
+Six inherited documentation findings are addressed: the raw-merge history guard
+from Task167, control/RSS labels from Task169, old read-callback usage statements
+from Task170, shared benchmark help from Task178, SO/miscompare terminology from
+Task179, and the ReplayPrimary planning precondition from Task185. Historical
+measurement values and checkpoint review counts retain their original meaning.
+The candidate deferred ledger is37minus6=31; final independent review is pending.
+
+Both affected C++ headers preprocess identically before and after these comment
+corrections. The shared benchmark AST is identical after excluding its module
+docstring. Its three help outputs retain identical options and use an accurate
+shared description. Three existing native executable hashes remain unchanged.
+Eleven focused checks pass: native primary replay, four CLI suites, three
+reporting suites, whitespace and two changed-header formatting checks.
+The full behavioral regression is not repeated for these documentation-only
+changes. Physical/timed/topology restrictions, resource limits, broader original
+requirements and excluded1 remain unchanged.
+
+The one final review found0Critical/2Important/0Minor on5b71a68. Both Important
+documentation findings are corrected in one pass: earlier current-use sections
+now describe supported read-callback/mixed-alias histories, and raw-merge usage
+explicitly retains the physical-output rejection even without a history getter.
+The remaining read-callback restriction is explicitly dated to its historical
+checkpoint. Physical, timed and logical-storage limits remain stated.
+
+Three targeted existing capability checks pass for merged read callbacks, actual
+mixed-alias observations and getter-free physical merge rejection. Together with
+the original11checks,14checks pass; C++ tokens, benchmark logic and all three
+native executables remain unchanged. No new tests mirror prose, no full
+behavioral requalification is claimed, and no rereview is requested.
+All six inherited documentation findings are resolved;31other inherited Minors,
+broader original requirements and excluded1 remain open. Integration is next.
