@@ -4465,6 +4465,100 @@ Module MergeBudget {
                    .count()
             << '\n';
 }
+void TestSharedControlLoadPreservation() {
+  for (const auto* consumer :
+       {"DataMux unused SelectedBy b[0] {1'b0:1'b0;1'b1:1'b1;} "
+        "DataOutPort q {Source unused;}",
+        "DataRegister unused[3:0] {WriteDataSource b; "
+        "WriteEnSource 1'b0; ResetValue 0;}"}) {
+    pattern::Design design;
+    design.AddIcl("shared-controls.icl",
+                  std::string("Module SharedTop {ScanInPort si; ") +
+                      "ScanRegister a[3:0] {ScanInSource si; CaptureSource a; "
+                      "ResetValue 0;} "
+                      "ScanRegister b[3:0] {ScanInSource si; CaptureSource b; "
+                      "ResetValue 0;} " +
+                      consumer +
+                      "ScanOutPort oa {Source a[0];} "
+                      "ScanOutPort ob {Source b[0];}} ");
+    const auto netlist = pattern::Elaborate(design, "SharedTop");
+    pattern::ScanScheduler scheduler(netlist);
+    scheduler.Reset();
+    bool rejected = false;
+    try {
+      scheduler.Apply({{"iWrite", {"a[0]", "1"}, "omitted", {}}});
+    } catch (const std::exception&) {
+      rejected = true;
+    }
+    Require(rejected && scheduler.Value("a") == "0000" &&
+                scheduler.Value("b") == "0000",
+            "unrelated control consumers cannot authorize omitted bank writes");
+    scheduler.Apply({{"iWrite", {"a", "9"}, "explicit", {}},
+                     {"iWrite", {"b", "9"}, "explicit", {}}});
+    Require(scheduler.Value("a") == "1001" && scheduler.Value("b") == "1001",
+            "compatible explicit control-bank writes remain supported");
+  }
+}
+void TestSharedScanInputs() {
+  pattern::Design design;
+  design.AddIcl("shared-input.icl", R"(
+Module SharedTop {
+  ScanInPort si;
+  ScanRegister a[3:0] { ScanInSource si; CaptureSource 4'b0101; ResetValue 0; }
+  ScanRegister hi[0:1] { ScanInSource si; CaptureSource 2'b10; ResetValue 0; }
+  ScanRegister lo[1:0] { ScanInSource hi[1]; CaptureSource 2'b11; ResetValue 0; }
+  ScanOutPort oa { Source a[0]; }
+  ScanOutPort ob { Source lo[0]; }
+})");
+  const auto netlist = pattern::Elaborate(design, "SharedTop");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  const auto first = scheduler.Apply({{"iWrite", {"a", "13"}, "write", {}},
+                                      {"iWrite", {"hi", "3"}, "write", {}},
+                                      {"iWrite", {"lo", "1"}, "write", {}}},
+                                     true);
+  Require(first.size() == 1 && first[0].lanes.size() == 2,
+          "shared input uses one frame with two physical return lanes");
+  for (const auto& lane : first[0].lanes) {
+    Require(lane.input == "si" && lane.serial == "1011",
+            "both banks receive the same literal LSB-first physical stream");
+  }
+  // Independent scalar shift oracle: SI -> hi -> lo, alongside SI -> a.
+  unsigned a = 5, hi = 2, lo = 3;
+  std::string returned_a, returned_b;
+  for (char input : first[0].lanes[0].serial) {
+    returned_a += (a & 1) ? '1' : '0';
+    returned_b += (lo & 1) ? '1' : '0';
+    a = (a >> 1) | ((input - '0') << 3);
+    lo = (lo >> 1) | ((hi & 1) << 1);
+    hi = (hi >> 1) | ((input - '0') << 1);
+  }
+  Require(a == 13 && hi == 3 && lo == 1 && returned_a == "1010" &&
+              returned_b == "1101" && scheduler.Value("a") == "1101" &&
+              scheduler.Value("hi") == "11" && scheduler.Value("lo") == "01" &&
+              scheduler.Value("si") == "1",
+          "independent bit shifts agree with every final bank and input pin");
+  pattern::ScanScheduler copy(scheduler);
+  const auto read = scheduler.Apply({{"iRead", {"a", "5"}, "read", {}},
+                                     {"iRead", {"hi", "2"}, "read", {}},
+                                     {"iRead", {"lo", "3"}, "read", {}}});
+  Require(read.size() == 1 && read[0].lanes.size() == 2 &&
+              read[0].lanes[0].serial_expected == returned_a &&
+              read[0].lanes[1].serial_expected == returned_b,
+          "separate capture streams retain their physical ordering");
+  bool rejected = false;
+  try {
+    copy.Apply({{"iWrite", {"a", "6"}, "blocked", {}},
+                {"iWrite", {"hi", "1"}, "blocked", {}},
+                {"iWrite", {"lo", "2"}, "blocked", {}}},
+               true, {{netlist.node_ids.at("lo"), "01"}}, false);
+  } catch (const std::exception&) {
+    rejected = true;
+  }
+  Require(rejected && copy.Value("a") == "1101" && copy.Value("hi") == "11" &&
+              copy.Value("lo") == "01" && scheduler.Value("a") == "1101",
+          "shared-input copy and ownership failure preserve all bank state");
+}
 void TestSharedScanOutputs() {
   pattern::Design design;
   design.AddIcl("shared-outputs.icl", R"(
@@ -7578,6 +7672,7 @@ int main(int argc, char* argv[]) {
       TestPrimaryLimits();
       return 0;
     }
+    TestSharedControlLoadPreservation();
     TestPhysicalTapResetLoads();
     TestNoIdBuiltinBypassAliases();
     TestRawTapUnknownInput();
@@ -7645,6 +7740,7 @@ int main(int argc, char* argv[]) {
     TestOneHotSharedAnalysisBudget();
     TestCallbackMergeBarriers();
     TestMergeAnalysisBudget();
+    TestSharedScanInputs();
     TestSharedScanOutputs();
     TestEnabledScanOutputs();
     TestClientScanControls();

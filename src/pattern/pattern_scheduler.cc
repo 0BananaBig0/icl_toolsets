@@ -350,7 +350,40 @@ class ScanScheduler::Impl {
           const auto& input = graph_[endpoints[root]].bit;
           chain_inputs[{output.node, output.index}] = {input.node, input.index};
         }
-        CheckIndependentChains(chain_inputs);
+        CheckIndependentChains(chain_inputs, nullptr, true);
+        std::map<Key, std::vector<size_t>> input_roots;
+        for (size_t root : roots_) {
+          const auto& output = graph_[root].bit;
+          input_roots[chain_inputs.at({output.node, output.index})].push_back(
+              root);
+        }
+        for (const auto& [input, roots] : input_roots) {
+          if (roots.size() < 2) continue;
+          std::vector<ConcretePath> paths;
+          size_t width = 0;
+          for (size_t root : roots) {
+            for (size_t id = root; !graph_[id].input;
+                 id = graph_[id].edges.front().next) {
+              const auto& vertex = graph_[id];
+              if (vertex.edges.size() != 1 ||
+                  vertex.edges.front().choice != kMissing ||
+                  netlist.nodes[vertex.bit.node].inputs.count("Enable")) {
+                throw std::runtime_error(
+                    "shared scan inputs or storage require overlapping-event "
+                    "scheduling");
+              }
+            }
+            auto path = TraceSerialPath(state_, root, false);
+            if (!path.width || (!paths.empty() && path.width != width)) {
+              throw std::runtime_error(
+                  "shared scan inputs or storage require overlapping-event "
+                  "scheduling");
+            }
+            width = path.width;
+            paths.push_back(std::move(path));
+          }
+          shared_input_paths_.push_back(std::move(paths));
+        }
         parallel_chains_ = true;
       }
     }
@@ -518,9 +551,22 @@ class ScanScheduler::Impl {
     }
   }
 
-  void CheckIndependentChains(
-      const std::map<Key, Key>& inputs,
-      std::map<size_t, size_t>* registers = nullptr) const {
+  void CheckIndependentChains(const std::map<Key, Key>& inputs,
+                              std::map<size_t, size_t>* registers = nullptr,
+                              bool shared_inputs = false) const {
+    std::vector<bool> input_only(graph_.size());
+    if (shared_inputs) {
+      for (size_t id : order_) {
+        const auto& vertex = graph_[id];
+        input_only[id] =
+            vertex.input ||
+            (vertex.bit.node != kMissing &&
+             netlist_.nodes[vertex.bit.node].kind != "ScanRegister" &&
+             vertex.edges.size() == 1 &&
+             vertex.edges.front().choice == kMissing &&
+             input_only[vertex.edges.front().next]);
+      }
+    }
     std::vector<size_t> owner(graph_.size(), kMissing);
     for (size_t root : roots_) owner[root] = root;
     for (auto it = order_.rbegin(); it != order_.rend(); ++it) {
@@ -536,6 +582,7 @@ class ScanScheduler::Impl {
         }
       }
       for (const auto& edge : vertex.edges) {
+        if (input_only[edge.next]) continue;
         if (owner[edge.next] != kMissing && owner[edge.next] != owner[id]) {
           throw std::runtime_error(
               "shared scan inputs or storage require overlapping-event "
@@ -4981,7 +5028,13 @@ class ScanScheduler::Impl {
     return ids_.at(requested);
   }
   void AddControl(BitReference initial) {
-    std::vector<BitReference> pending{initial};
+    CollectControls({initial}, control_masks_, &data_control_masks_,
+                    control_seen_);
+  }
+  void CollectControls(std::vector<BitReference> pending,
+                       std::map<size_t, std::string>& scan_masks,
+                       std::map<size_t, std::string>* data_masks,
+                       std::set<Key>& seen) const {
     while (!pending.empty()) {
       const auto bit = pending.back();
       pending.pop_back();
@@ -4990,21 +5043,17 @@ class ScanScheduler::Impl {
         throw std::runtime_error(
             "multiple TAPs require explicit reset connectivity");
       }
-      if (bit.node == kMissing ||
-          !control_seen_.insert({bit.node, bit.index}).second) {
+      if (bit.node == kMissing || !seen.insert({bit.node, bit.index}).second) {
         continue;
       }
       const auto& node = netlist_.nodes.at(bit.node);
-      if (node.kind == "DataRegister") {
+      if (data_masks && node.kind == "DataRegister") {
         auto& mask =
-            data_control_masks_.try_emplace(bit.node, node.Width(), '0')
-                .first->second;
+            data_masks->try_emplace(bit.node, node.Width(), '0').first->second;
         mask.at(Offset(node, bit.index)) = '1';
       }
       if (node.kind == "ScanRegister") {
-        auto entry =
-            control_masks_.emplace(bit.node, std::string(node.Width(), '0'))
-                .first;
+        auto entry = scan_masks.try_emplace(bit.node, node.Width(), '0').first;
         entry->second.at(Offset(node, bit.index)) = '1';
         continue;
       }
@@ -6931,6 +6980,85 @@ class ScanScheduler::Impl {
         if (explicit_goals.count(id)) data_write_goals.push_back(id);
       }
     }
+    std::set<size_t> shared_registers;
+    std::map<size_t, std::string> requested_controls;
+    if (!shared_input_paths_.empty()) {
+      for (const auto& paths : shared_input_paths_) {
+        for (const auto& path : paths) {
+          for (const auto& [id, suffix] : path.registers) {
+            shared_registers.insert(id);
+          }
+        }
+      }
+      // Unrelated consumers cannot make an omitted shared load writable.
+      std::vector<BitReference> roots;
+      const auto append = [&](const auto& refs) {
+        roots.insert(roots.end(), refs.begin(), refs.end());
+      };
+      std::set<size_t> nodes;
+      for (const auto& vertex : graph_) {
+        if (vertex.bit.node != kMissing) nodes.insert(vertex.bit.node);
+      }
+      if (routes) {
+        for (const auto& [id, bits] : data_reads) {
+          for (const auto& [index, value] : bits) {
+            for (const auto& route : routes->routes.at({id, index})) {
+              for (const auto& guard : route.guards) nodes.insert(guard.node);
+            }
+          }
+        }
+      }
+      for (size_t id : nodes) {
+        const auto& node = netlist_.nodes[id];
+        for (const auto* property : {"SelectedBy", "Enable"}) {
+          const auto found = node.inputs.find(property);
+          if (found != node.inputs.end()) append(found->second);
+        }
+        for (const auto& source : node.one_hot_sources) {
+          for (const auto& access : one_hot_.Resolve(source)) {
+            roots.push_back(access.enable);
+            if (access.signals) append(*access.signals);
+          }
+        }
+      }
+      for (size_t id : required) {
+        if (netlist_.nodes[id].reset) {
+          roots.push_back(*netlist_.nodes[id].reset);
+        }
+      }
+      for (const auto& [id, bits] : goals) {
+        if (netlist_.nodes[id].reset) {
+          roots.push_back(*netlist_.nodes[id].reset);
+        }
+      }
+      for (size_t id : data_write_goals) {
+        append(netlist_.nodes[id].inputs.at("WriteDataSource"));
+        const auto& access = data_plan.writes.at(id);
+        roots.push_back(access.enable);
+        if (access.signals) append(*access.signals);
+      }
+      for (size_t id : port_goals) {
+        const auto& node = netlist_.nodes[id];
+        for (size_t offset = 0; offset < node.Width(); ++offset) {
+          roots.push_back(
+              {id, node.left + (node.left <= node.right
+                                    ? static_cast<int64_t>(offset)
+                                    : -static_cast<int64_t>(offset))});
+        }
+      }
+      for (const auto& [id, bits] : end_goals) {
+        const auto& node = netlist_.nodes[id];
+        for (size_t offset = 0; offset < bits.size(); ++offset) {
+          if (bits[offset] == 'x') continue;
+          roots.push_back(
+              {id, node.left + (node.left <= node.right
+                                    ? static_cast<int64_t>(offset)
+                                    : -static_cast<int64_t>(offset))});
+        }
+      }
+      std::set<Key> seen;
+      CollectControls(std::move(roots), requested_controls, nullptr, seen);
+    }
     const auto [access_context, grouped_reads, read_order,
                 independent_instructions] = CheckAccessGroups(groups);
     std::set<size_t> client_group;
@@ -7292,10 +7420,11 @@ class ScanScheduler::Impl {
           const auto loaded = context_.bv_const(
               ("load_" + std::to_string(time) + "_" + node.name).c_str(),
               node.Width());
+          const auto& masks =
+              shared_registers.count(id) ? requested_controls : control_masks_;
           const auto allowed = SymbolicValue::Literal(
-              context_, control_masks_.count(id)
-                            ? control_masks_.at(id)
-                            : std::string(node.Width(), '0'));
+              context_,
+              masks.count(id) ? masks.at(id) : std::string(node.Width(), '0'));
           auto requested = goals.count(id)
                                ? SymbolicValue::Literal(context_, goals.at(id))
                                : fills.at(id);
@@ -7338,6 +7467,23 @@ class ScanScheduler::Impl {
                 (active &&
                  (!node.reset ? context_.bool_val(true)
                               : Known(update_values.Read(*node.reset), false)));
+          }
+        }
+        // Fixed equal-length lanes must agree on the one physical input stream.
+        for (const auto& paths : shared_input_paths_) {
+          std::optional<z3::expr> shared;
+          for (const auto& path : paths) {
+            std::optional<z3::expr> stream;
+            for (const auto& [id, suffix] : path.registers) {
+              auto bits = frame.loads.at(id).bits;
+              if (path.inverted != suffix) bits = ~bits;
+              stream = stream ? z3::concat(bits, *stream) : bits;
+            }
+            if (shared) {
+              solver.add(z3::implies(scan, *stream == *shared));
+            } else {
+              shared = stream;
+            }
           }
         }
         cycles = cycles + *frame.clocks;
@@ -8310,6 +8456,14 @@ class ScanScheduler::Impl {
         step.lanes.push_back(lane);
       }
     }
+    std::map<Key, std::string> input_streams;
+    for (const auto& [input, lane] : lanes) {
+      const auto [found, inserted] =
+          input_streams.emplace(Key{input.node, input.index}, lane.serial);
+      if (!inserted && found->second != lane.serial) {
+        throw std::runtime_error("conflicting scan streams on shared input");
+      }
+    }
     std::function<void(size_t, const NetworkState&)> sample;
     if (!read_lanes.empty()) {
       sample = [&](size_t tick, const NetworkState& current) {
@@ -8483,6 +8637,7 @@ class ScanScheduler::Impl {
   std::map<size_t, RawSegment> raw_segments_;
   size_t raw_profile_work_ = 0;
   bool parallel_chains_ = false;
+  std::vector<std::vector<ConcretePath>> shared_input_paths_;
   bool data_reset_dependencies_ = false, feedback_resets_ = false;
   bool primary_state_indexed_ = false;
   std::optional<std::vector<size_t>> primary_state_candidates_;

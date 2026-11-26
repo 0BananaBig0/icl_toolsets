@@ -1142,6 +1142,7 @@ python3 tests/src/pattern/test_scan_data_register_scheduling.py $1
 python3 tests/src/pattern/test_one_hot_scan_scheduling.py $1
 python3 tests/src/pattern/test_vector_scan_inputs.py $1
 python3 tests/src/pattern/test_shared_scan_outputs.py $1
+python3 tests/src/pattern/test_shared_scan_inputs.py $1
 python3 tests/src/pattern/test_pending_reset.py $1
 python3 tests/src/pattern/test_client_scan_controls.py $1
 python3 tests/src/pattern/test_system_clocks.py $1
