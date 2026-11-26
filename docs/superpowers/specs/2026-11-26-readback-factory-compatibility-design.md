@@ -37,3 +37,17 @@ by hand. No generator or certification-policy logic changes. Retain all passing
 unaffected suite results and rerun the failed golden target after certification.
 Report the initial full-command failure and the subsequent focused gate repair
 separately; do not call this a fresh all-green full-command run.
+
+The review-required full rerun reached the main recipe and exposed an existing
+coverage inventory omission: pattern_readback.cc is absent from coverage.SOURCES.
+Add that source to the existing inventory and run its existing regression. Do not
+change excluded item1 thresholds or attempt coverage closure. All prerequisites
+passed in the full rerun; retain their source/product identities, then execute
+the entire main check recipe after this one inventory correction. Report that
+resumed verification accurately rather than claiming every prerequisite reran.
+
+Final review correction: the initial prerequisite failure also skipped the main
+recipe. The fresh full rerun completes every prerequisite and exposes the source
+inventory omission described above. Its RED/GREEN repair and complete resumed
+main recipe close the gap. Evidence remains composite, not a fresh single-pass
+all-green command.

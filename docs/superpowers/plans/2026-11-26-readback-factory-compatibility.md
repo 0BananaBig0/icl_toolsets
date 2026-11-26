@@ -54,10 +54,17 @@ Implementation verification: python3 /tmp/readback-factory-check.py
 
 ## Branch integration
 
-- [ ] Obtain one final review; grade every finding/declined area and fix blockers
+- [x] Obtain one final review; grade every finding/declined area and fix blockers
   once with RED/GREEN evidence; keep any new Minors deferred.
 - [ ] Merge and run merged native/API checks, push, detach/delete owned branch,
   archive own ledger and verify clean pushed master with117stashes.
 
 Self-review: one task; existing overload consumers remain unchanged. The native
 test uses real model state rather than mocks or declaration-text assertions.
+
+Final review amendment: fresh full check passes every prerequisite but exposes
+an omitted pattern_readback.cc source in tests/coverage.py. Its existing test
+is RED then GREEN after the one-entry inventory fix. No excluded thresholds
+change. Rerun the entire main recipe with completed prerequisites retained;
+expected exit0, actual exit0. All project checks are now covered;the initial
+full-command failures remain explicit. One new Minor is deferred.
