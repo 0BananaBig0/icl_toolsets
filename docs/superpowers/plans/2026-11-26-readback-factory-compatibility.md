@@ -56,7 +56,7 @@ Implementation verification: python3 /tmp/readback-factory-check.py
 
 - [x] Obtain one final review; grade every finding/declined area and fix blockers
   once with RED/GREEN evidence; keep any new Minors deferred.
-- [ ] Merge and run merged native/API checks, push, detach/delete owned branch,
+- [x] Merge and run merged native/API checks, push, detach/delete owned branch,
   archive own ledger and verify clean pushed master with117stashes.
 
 Self-review: one task; existing overload consumers remain unchanged. The native

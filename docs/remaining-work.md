@@ -1595,3 +1595,10 @@ detect split model ownership by clearing publication status then checking
 preview returns zero. No production defect was found in the factory repair.
 Current inherited31minus1resolved plus1new=31deferred Minors. No rereview is
 requested;integration remains next.
+
+Task187 is merged as b2ba89a and pushed. All six merged checks
+pass on identical qualified inputs and four copied executable hashes, including
+the readback API regression, coverage inventory and77directional snapshots.
+The owned task branch is deleted;the reused worktree is detached;117stashes
+are preserved. The Important review gap is resolved;31Minors remain deferred.
+Broader original requirements and excluded1 remain open.
