@@ -1896,4 +1896,10 @@ executables, then the new regression and complete qualification pass after the
 minimal offset fix. No second review was used. The two Minors remain deferred:
 scale assertions check only the common bank's literal write, and concrete replay
 retains redundant per-observation input work. There are 33 deferred Minors total;
-no Critical or Important issue remains unresolved. Integration is pending.
+no Critical or Important issue remains unresolved.
+
+Task192 is merged into master at c813110 and pushed. All eight merged-result
+checks pass on 4,123 identical source/test inputs and ten copied qualified
+executables. The owned task branch is deleted, the reused worktree is detached,
+and all 117 stashes are preserved. The broader inventory and 33 deferred Minors
+remain open; strict coverage item 1 remains excluded.

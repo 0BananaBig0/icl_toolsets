@@ -67,7 +67,7 @@ shared_input_paths_, Frame.loads and Replay; no public API changes.
 
 - [x] One fresh whole-branch review; grade every finding and declined area.
   One Critical/Important RED→GREEN repair pass with green whole suite; defer Minors.
-- [ ] Merge into recorded parent master, verify merged source/products and
+- [x] Merge into recorded parent master, verify merged source/products and
   focused tests, push and delete the owned branch. Archive only this task ledger.
 
 Review repair: a fourteenth CLI method reproduces selected vector ResetPort
