@@ -11604,4 +11604,6 @@ mutation. The final frozen inputs and binaries also bind all 45
 measurements and vendor comparisons. Fresh native generation confirms every
 vendor input byte is unchanged, allowing reuse of the six actual jobs with
 current binary and trace identities. One review repair pass resolves both
-Important findings; one Minor is deferred. Integration remains pending.
+Important findings; one Minor is deferred. Task195 is merged and pushed to
+master as a31e1e8; all nine merged-result checks pass and the task branch is
+deleted, with 117 stashes preserved.

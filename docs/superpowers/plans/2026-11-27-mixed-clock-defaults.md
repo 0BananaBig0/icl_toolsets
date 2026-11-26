@@ -68,5 +68,5 @@ retain their established argument order and spelling.
 
 - [x] One fresh independent whole-branch review, all findings/declined areas graded,
   one Critical/Important test-first repair pass if required; defer Minors.
-- [ ] Merge into master, verify merged inputs and focused tests, push and delete
+- [x] Merge into master, verify merged inputs and focused tests, push and delete
   only codex/mixed-clock-defaults; archive only this plan's own workspace.
