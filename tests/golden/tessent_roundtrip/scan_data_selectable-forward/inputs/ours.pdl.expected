@@ -12,5 +12,5 @@ iWrite core.observed 0b0000
 iApply
 iWrite core.bus 0b10110
 iWrite core.observed 0b0000
-iRead core.observed 0b0110
+iRead core.value 0b0110
 iApply

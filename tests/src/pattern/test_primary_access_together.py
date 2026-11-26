@@ -160,13 +160,19 @@ Alias pair[7:0] = a, b { AccessTogether; }'''
             'iWrite data 5; iApply; iRead pair 0x55; iApply', serial=True, ok=False)
         self.assertIn('AccessTogether', error)
 
-    def test_partial_read_observes_unrequested_member(self):
+    def test_partial_read_keeps_group_access_without_unrequested_history(self):
         output = self.exercise('''DataInPort data[7:0];
 DataOutPort a[3:0] { Source data[7:4]; }
 DataOutPort b[3:0] { Source data[3:0]; }
 Alias pair[7:0] = a, b { AccessTogether; }''',
             'iWrite data 0x59; iApply; iRead pair[7:4] 5; iApply', serial=True)
-        self.assert_group(output, reads=('iRead a 0b0101', 'iRead b 0bxxxx'))
+        self.assert_group(output, reads=('iRead a 0b0101', 'iRead {pair[7:4]} 0b0101'))
+        self.assertNotIn('iRead b ', output)
+        self.exercise('''DataInPort data[7:0]; DataInPort select;
+DataOutPort a[3:0] { Source data[7:4]; Enable select; }
+DataOutPort b[3:0] { Source data[3:0]; Enable ~select; }
+Alias pair[7:0] = a, b { AccessTogether; }''',
+            'iWrite data 0x59; iApply; iRead pair[7:4] 5; iApply', serial=True, ok=False)
 
     def test_group_with_64_primary_members(self):
         pins = [f'p{index:02}' for index in range(64)]

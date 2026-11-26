@@ -124,7 +124,11 @@ iNote [iGetReadData low -bin]; iNote [iGetStatus -clear]; iNote [iGetStatus]
         icl.write_text(source)
         pdl.write_text('iPDLLevel 1\niProcsForModule Chains\n' + prefix)
         continuation.write_text('iPDLLevel 1\n' + tail)
+        passed = True
+        self.prefix_producer_seconds = []
         for modeled in (False, True):
+            started = time.monotonic()
+            complete = False
             with self.subTest(modeled=modeled):
                 self.run_tool(icl, pdl, 'prefix-generated.pdl',
                               extra=('--model_readback',) if modeled else ())
@@ -134,6 +138,10 @@ iNote [iGetReadData low -bin]; iNote [iGetStatus -clear]; iNote [iGetStatus]
                                                extra=('--model_readback', '--pdl',
                                                       str(continuation)))
                         self.assertEqual(self.notes(output), expected)
+                complete = True
+            passed = passed and complete
+            self.prefix_producer_seconds.append(time.monotonic() - started)
+        return passed
 
     def test_routed_comparison_preserves_logical_history_and_failure(self):
         source = helpers.network().replace(

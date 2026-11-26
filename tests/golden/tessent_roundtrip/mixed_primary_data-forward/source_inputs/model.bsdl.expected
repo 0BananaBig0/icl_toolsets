@@ -1,0 +1,25 @@
+-- Self-constructed BSDL companion for the IEEE 1687 AccessLink probe.
+entity AccessProbe is
+  generic (PHYSICAL_PIN_MAP : string := "PACK");
+  port (TDI, TMS, TCK, TRST, PIN : in bit; TDO : out bit);
+  use STD_1149_1_2001.all;
+  attribute COMPONENT_CONFORMANCE of AccessProbe : entity is "STD_1149_1_2001";
+  attribute PIN_MAP of AccessProbe : entity is PHYSICAL_PIN_MAP;
+  constant PACK : PIN_MAP_STRING := "TDI:1, TMS:2, TCK:3, TRST:4, PIN:5, TDO:6";
+  attribute TAP_SCAN_IN of TDI : signal is true;
+  attribute TAP_SCAN_OUT of TDO : signal is true;
+  attribute TAP_SCAN_MODE of TMS : signal is true;
+  attribute TAP_SCAN_CLOCK of TCK : signal is (10.0e6, BOTH);
+  attribute TAP_SCAN_RESET of TRST : signal is true;
+  attribute INSTRUCTION_LENGTH of AccessProbe : entity is 4;
+  attribute INSTRUCTION_OPCODE of AccessProbe : entity is
+    "BYPASS (1111), EXTEST (0000), SAMPLE (0001), IDCODE (0010), " &
+    "IJTAG_ON (0011), IJTAG_OFF (0100)";
+  attribute INSTRUCTION_CAPTURE of AccessProbe : entity is "0001";
+  attribute IDCODE_REGISTER of AccessProbe : entity is
+    "0001" & "0000000000000000" & "00000000001" & "1";
+  attribute REGISTER_ACCESS of AccessProbe : entity is
+    "BOUNDARY (EXTEST, SAMPLE), BYPASS (BYPASS), DEVICE_ID (IDCODE)";
+  attribute BOUNDARY_LENGTH of AccessProbe : entity is 1;
+  attribute BOUNDARY_REGISTER of AccessProbe : entity is "0 (BC_1, PIN, input, X)";
+end AccessProbe;

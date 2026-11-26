@@ -1,0 +1,26 @@
+iProcsForModule SelectableData
+
+iProc oracle {} {
+
+   iReset
+   iWrite data[3] 0b1
+   iWrite data[2] 0b0
+   iWrite data[1] 0b0
+   iWrite data[0] 0b1
+   iWrite enable 0b1
+   iApply
+
+   iRead observed[3] 0b1
+   iRead observed[2] 0b0
+   iRead observed[1] 0b0
+   iRead observed[0] 0b1
+   iApply
+
+   iWrite data[3] 0b0
+   iWrite data[2] 0b1
+   iWrite data[1] 0b1
+   iWrite data[0] 0b0
+   iApply
+
+
+}

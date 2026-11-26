@@ -37,12 +37,12 @@ class DataRegisterScheduling(unittest.TestCase):
 
     def test_repeated_read_last_comparison_wins(self):
         text = self.run_tool('iRead value 9\niRead value 6\niApply\n', extra=('--debug',))
-        self.assertIn('iRead observed 0b0110', text)
+        self.assertIn('iRead value 0b0110', text)
         self.replay(text)
 
     def test_unqualified_read_replaces_prior_comparison(self):
         text = self.run_tool('iRead value 9\niRead value\niApply\n', extra=('--debug',))
-        self.assertIn('iRead observed 0bxxxx', text)
+        self.assertIn('iRead value 0bxxxx', text)
         self.replay(text)
 
     def test_selectable_partial_write(self):
@@ -121,7 +121,7 @@ class DataRegisterScheduling(unittest.TestCase):
 
     def test_selectable_read_comparison_does_not_invent_storage(self):
         text = self.run_tool('iRead value 9\niApply\n', extra=('--debug',))
-        self.assertIn('iRead observed 0b1001', text)
+        self.assertIn('iRead value 0b1001', text)
         self.assertNotIn('iWrite data', text)
         self.replay(text)
 
@@ -130,7 +130,7 @@ class DataRegisterScheduling(unittest.TestCase):
         self.icl.write_text((FIXTURES / 'selectable.icl').read_text().replace(
             'Source value;', 'Source ~value;'))
         text = self.run_tool('iRead value 9\niApply\n', extra=('--debug',))
-        self.assertIn('iRead observed 0b0110', text)
+        self.assertIn('iRead value 0b1001', text)
         self.replay(text)
 
     def test_mux_read_and_unqualified_partial_comparison(self):
@@ -142,8 +142,8 @@ class DataRegisterScheduling(unittest.TestCase):
                 'Source value;', 'Source read_mux;'))
         text = self.run_tool('iRead value[2:1] 1\niApply\niRead value\niApply\n', extra=('--debug',))
         self.assertIn('iWrite select 0b1', text)
-        self.assertIn('iRead observed 0bx01x', text)
-        self.assertIn('iRead observed 0bxxxx', text)
+        self.assertIn('iRead {value[2:1]} 0b01', text)
+        self.assertIn('iRead value 0bxxxx', text)
         self.replay(text)
 
     def test_nested_addressed_read(self):
@@ -151,7 +151,7 @@ class DataRegisterScheduling(unittest.TestCase):
         self.icl = ROOT / 'tests/cases/tessent/pattern_generation/address_defaults.icl'
         text = self.run_tool('iRead child.r 0x96\niApply\n', extra=('--debug',))
         self.assertIn('iWrite address 0b00000101', text)
-        self.assertIn('iRead out 0b10010110', text)
+        self.assertIn('iRead child.r 0b10010110', text)
         self.replay(text)
 
     def test_nested_control_write_and_non_destructive_held_enable_read(self):
@@ -167,8 +167,8 @@ class DataRegisterScheduling(unittest.TestCase):
         self.top, self.icl = 'AddressedData', FIXTURES / 'addressed.icl'
         text = self.run_tool('iRead a 9\niRead b 6\niApply\n', extra=('--debug',))
         self.assertEqual(text.count('iApply\n'), 2)
-        self.assertIn('iRead observed 0b1001', text)
-        self.assertIn('iRead observed 0b0110', text)
+        self.assertIn('iRead a 0b1001', text)
+        self.assertIn('iRead b 0b0110', text)
         self.assertIn('iWrite re 0b1', text)
         self.assertNotIn('iWrite data', text)
         self.replay(text)
@@ -176,7 +176,7 @@ class DataRegisterScheduling(unittest.TestCase):
     def test_read_before_write_same_register(self):
         text = self.run_tool('iReset\niRead value 9\niWrite value 6\niApply\n', extra=('--debug',))
         self.assertEqual(text.count('iApply\n'), 2)
-        self.assertLess(text.index('iRead observed'), text.index('iWrite data'))
+        self.assertLess(text.index('iRead value'), text.index('iWrite data'))
         self.replay(text)
 
     def test_unobservable_read_preserves_output(self):

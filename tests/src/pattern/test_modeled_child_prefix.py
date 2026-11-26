@@ -194,7 +194,8 @@ iNote [iGetMiscompares child0.local -dec]; iNote [iGetStatus]
         icl,script,tail = (self.root/n for n in ('source.icl','source.pdl','tail.pdl'))
         icl.write_text(source)
         program = merged.MergedReadback.event_program(self)
-        tail.write_text('iPDLLevel 1\niNote [iGetReadData observed -dec]; iNote [iGetStatus]\n')
+        tail.write_text('iPDLLevel 1\niNote [iGetReadData d -dec]; '
+                        'iNote [iGetReadData observed -dec]; iNote [iGetStatus]\n')
         results = []
         for annotated in (False,True):
             text = program+'iApply\n'+(
@@ -205,7 +206,7 @@ iNote [iGetMiscompares child0.local -dec]; iNote [iGetStatus]
             replay = self.run_tool(icl,self.root/'merge-prefix.pdl','merge/replay.pdl',
                                    extra=('--pdl',str(tail)))
             results.append([line for line in generated.splitlines() if not line.startswith(b'iNote ')])
-            self.assertEqual(self.notes(replay)[-2:],[b'9',b'2'])
+            self.assertEqual(self.notes(replay)[-3:],[b'9',b'X',b'2'])
         self.assertEqual(results[0],results[1])
 
     def test_generated_prefix_local_reset_verifier_restores_child_history(self):

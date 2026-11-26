@@ -84,8 +84,11 @@ iMerge -begin; iCall first; iCall second; iMerge -end
 
     def capture_probe(self, output):
         probe = self.root/'probe.pdl'
-        probe.write_bytes(output+b'\niNote [iGetReadData observed -dec]\n')
-        return self.notes(self.run_tool(self.root/'source.icl', probe, 'probe/result.pdl'))[-1]
+        probe.write_bytes(output+b'\niNote [iGetReadData d -dec]\n'
+                          b'iNote [iGetReadData observed -dec]\n')
+        actual = self.notes(self.run_tool(self.root/'source.icl', probe, 'probe/result.pdl'))
+        self.assertEqual(actual[-1], b'X')
+        return actual[-2]
 
     def test_pio_inside_and_after_calls(self):
         output = self.check(PIO, merged('iWrite p 9; iRead q 0; iApply; iNote [iGetReadData q -dec]',

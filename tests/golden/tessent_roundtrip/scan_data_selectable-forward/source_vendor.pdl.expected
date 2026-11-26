@@ -1,0 +1,24 @@
+iProcsForModule ScanData
+
+iProc oracle {} {
+
+   iReset
+   iWrite tap.INSTRUCTION[3:0] 0b0011
+   iRead  tap.INSTRUCTION[3:0] 0b0001
+   iApply
+
+   iWrite core.bus[4:0] 0b11001
+   iWrite core.observed[3:0] 0b0000
+   iApply
+
+   iWrite core.bus[4:0] 0b10110
+   iWrite core.observed[3:0] 0b0000
+   iApply
+
+   iWrite core.bus[4:0] 0b10110
+   iWrite core.observed[3:0] 0b0000
+   iRead  core.observed[3:0] 0b0110
+   iApply
+
+
+}

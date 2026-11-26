@@ -1259,7 +1259,7 @@ Module Top {
                 "goal markers describe independently reached storage");
       }
     }
-    if (step.expected.count("q")) {
+    if (step.expected.count("value")) {
       ++reads;
       Require(oracle.Value(netlist.node_ids.at("q")) == "1010",
               "actual physical output is old data at the selected read frame");

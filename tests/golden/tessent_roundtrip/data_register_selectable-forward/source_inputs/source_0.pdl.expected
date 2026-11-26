@@ -1,0 +1,8 @@
+iProcsForModule SelectableData
+iReset
+iWrite value 9
+iApply
+iRead value 9
+iApply
+iWrite value 6
+iApply

@@ -71,7 +71,8 @@ Module {top}Probe {{
                 return original
             if default_body:
                 self.assertIn(f'iWrite {pin} ', original)
-                self.assertIn(f'iRead observed 0b{5:0{width}b}', original)
+                target = 'core.value' if tap else 'value'
+                self.assertIn(f'iRead {target} 0b{5:0{width}b}', original)
             flat = root / f'first/debug/{top}.icl'
             flat_text = flat.read_text()
             self.assertEqual(original, run(flat, source, 'flat'))

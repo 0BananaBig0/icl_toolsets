@@ -3,8 +3,8 @@ iProcsForModule DataStateSnapshot
 iReset
 iState enable 0b0
 iState value 0b1001
-iRead q 0b1001
+iRead value 0b1001
 iApply
 iState value 0b0110
-iRead q 0b0110
+iRead value 0b0110
 iApply

@@ -763,3 +763,34 @@ are retained locally as standalone-idle-observed-vendor-run.log/.exit.
 Two fresh Tessent2026.2 forward standards qualify nested standalone capture and update gating. The local generator prepares each selector before the requested register observation or write; Tessent re-exports the generated PDL with identical ordered apply groups under the unchanged comparator. CaptureSource1010 is distinct from reset0000. All19 staged file hashes match. The offline directional total is53.
 
 Reverse capture exported but failed exact group comparison; reverse update source export rejected automatic suppression-state assignment under the default vendor policy. Both failed attempts remain in build/control-mux-operation-vendor/evidence. No reverse certificate or general gating/TAP/clock claim is made. Source fixtures and limitations are maintained in tests/cases/ours/pattern_generation/control_mux_operations/README.md.
+
+## Logical read identities and reference exports (2026-11-26)
+
+Five forward fixtures now retain logical DataRegister read targets in native
+PDL while Tessent exports their physical observers. Schema4 uses
+`reference-vendor-equivalence-ordered-applies-v1`: compare fresh vendor exports
+of the previously certified generated program and the current generated program,
+then check the current native logical trace separately. Exact native regeneration
+and local idempotency remain required. Existing schema3 comparisons are unchanged.
+
+`tests/tessent_roundtrip.py record --source-bundle REFERENCE` adds the second
+fresh bundle to forward certification. A reference bundle can contain the original
+source PDL sequence. For a previously certified generated program, its prepared
+`reference_certificates` map must contain that case's schema3 forward certificate;
+the executed PDL input must match that certificate's exact `flat.pdl` hash and
+unchanged case/source hashes. The bundle preparation command records scaffolding;
+copy the certified input and update its prepared input hash before vendor execution.
+Both fresh exports must match the prior certified ordered trace. The snapshot
+retains the prior certificate, reference inputs/export and both jobs' provenance.
+
+Independent original-source schedules may differ. The queued-state original
+still rejects pending `iState`; these refreshes certify generated exports and
+make no new claim that Tessent accepts that source. See
+[Task190 evidence and limits](remaining-work.md#task190-ordinary-logical-read-scope).
+
+Schema4 record and offline checks reconstruct the canonical vendor execution
+script from the recorded top,ordered ICL/PDL inputs,BSDL and testbench setting,
+and compare it with the preserved `run.tcl`. Declared original-source input
+metadata cannot relabel a run that actually executed a generated program. Prior
+certificates require generator and vendor-console hashes plus consistent case,
+source,successful vendor-job,input,artifact and ordered-trace bindings.
