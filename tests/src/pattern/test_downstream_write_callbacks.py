@@ -293,7 +293,9 @@ iWrite dest 6; iApply; if {$::calls != 2} {error retry_count}
         output = self.generation_replay(
             "iRead q 9; iApply; if {$::calls != 0} {error read_is_not_write}")
         self.assertEqual(self.notes(output), [])
-        self.rejected("iWrite dest 9; iApply", "callback", modeled=True)
+        icl,pdl=self.root / "source.icl",self.root / "source.pdl"
+        icl.write_text(MODEL);pdl.write_text(PROCS+"iWrite dest 9; iApply\n")
+        self.assertIn(b"iWrite en 0b1",self.run_tool(icl,pdl,modeled=True))
         self.rejected("iWrite dest 9; iApply", "callback", extra=("--physical_pdl",))
 
     def test_prefix_namespace_and_split_inputs(self):
@@ -401,14 +403,17 @@ if {$::calls != 2} {error selected_count}
         self.assertNotIn(b"iWrite go 0b1", output)
 
     def test_logical_and_observation_boundaries(self):
-        self.rejected("""
+        icl, pdl = self.root / "observed.icl", self.root / "observed.pdl"
+        icl.write_text(MODEL)
+        pdl.write_text(PROCS+"""
 iState p 3; iRead endpoint 0; iApply; iGetStatus
 iProc store {data reg} {
  iWrite en 0; iWrite p $data; iApply
  iRead endpoint 0; iApply; iNote [iGetReadData endpoint -dec]
 }
 iWrite dest 9; iApply
-""", "automatic callback histories", modeled=True)
+""")
+        self.assertEqual(self.notes(self.run_tool(icl,pdl,modeled=True)),[b"9"])
         icl, pdl = self.root / "cancel.icl", self.root / "cancel.pdl"
         icl.write_text(MODEL)
         pdl.write_text(PROCS + """

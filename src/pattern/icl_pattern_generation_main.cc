@@ -1018,8 +1018,11 @@ int main(int argc, char** argv) {
                       [](const auto& operation) {
                         return operation.callback_prerequisite;
                       })) {
-        throw std::runtime_error(
-            "modeled readback excludes callback histories");
+        if (!pattern::CanUsePrimaryCallbackReadback(network.netlist)) {
+          throw std::runtime_error(
+              "modeled readback excludes callback histories");
+        }
+        if (!options.physical) status_readback(runtime.operations());
       }
       if (options.physical) {
         throw std::runtime_error("physical PDL callbacks are unsupported");

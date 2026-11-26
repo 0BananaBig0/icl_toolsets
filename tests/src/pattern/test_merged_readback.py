@@ -235,8 +235,11 @@ iMerge -begin; iCall first; iCall second; iMerge -end; iNote $::seen
         self.assertEqual(self.capture_probe(output), b'0')
 
     def test_callback_guards(self):
-        self.rejected(callbacks.MODEL, callbacks.PROCS+merged(
-            'iWrite dest 9; iApply'), 'callback histories')
+        automatic = self.check(callbacks.MODEL, callbacks.PROCS+merged(
+            'iWrite dest 9; iApply', '''iRead endpoint 9; iRead q 0bx; iApply
+iNote [iGetReadData endpoint -dec]; iNote [iGetReadData q -bin]
+'''))
+        self.assertEqual(self.notes(automatic), [b'value=0b1001', b'9', b'0bxxxx'])
         source = callbacks.MODEL.replace('WriteCallBack Chains', 'ReadCallBack Chains')
         output = self.check(source, callbacks.PROCS+merged('iRead value 9; iApply',
             'iRead endpoint 0; iApply; iNote [iGetReadData endpoint -dec]'))

@@ -514,11 +514,12 @@ class ScanScheduler::Impl {
       }
     }
   }
-  void CheckPreservedValues(const std::map<size_t, std::string>& preserved) {
+  void CheckPreservedValues(const std::map<size_t, std::string>& preserved,
+                            const NetworkState* current = nullptr) {
     ValidateOpaquePreserved(preserved);
     const auto desired = DesiredPreserved(preserved, {}, false, {});
     auto held = preserved;
-    CheckPreserved(state_, held, desired);
+    CheckPreserved(current ? *current : state_, held, desired);
   }
   void FilterOpaqueAssigned(std::set<size_t>* assigned) const {
     if (opaque_model_ && assigned) {
@@ -2987,6 +2988,109 @@ class ScanScheduler::Impl {
     }
     return steps;
   }
+  void ReplayPrimary(const std::vector<Operation>& operations,
+                     const std::vector<ScanStep>& steps,
+                     const std::map<size_t, std::string>& preserved,
+                     const PioObservation& observe,
+                     const std::map<size_t, std::string>& caller_goals) {
+    if (!roots_.empty() || !registers_.empty() || tap_ || opaque_model_) {
+      throw std::runtime_error(
+          "exact primary replay requires a primary-only network");
+    }
+    ValidateOpaquePreserved(preserved);
+    std::set<Key> requested, observed_bits;
+    for (const auto& operation : operations) {
+      if (operation.command != "iRead") continue;
+      for (const auto& bit :
+           ResolvePdlTarget(netlist_, operation.arguments.at(0)).bits) {
+        if (bit.node != kMissing) requested.emplace(bit.node, bit.index);
+      }
+    }
+    if (!requested.empty() && !data_read_routes_) {
+      data_read_routes_ = std::make_unique<DataReadRoutes>(netlist_);
+    }
+    const auto end_goals = EndGoals(operations);
+    const auto desired =
+        DesiredPreserved(preserved, end_goals, true, operations);
+    auto held = preserved;
+    NetworkState replay(state_);
+    auto fill = fill_;
+    const auto check = [&](const NetworkState& current) {
+      CheckPreserved(current, held, desired);
+    };
+    check(replay);
+    for (const auto& step : steps) {
+      if (step.instruction || !step.serial.empty() || !step.lanes.empty() ||
+          !step.loads.empty()) {
+        throw std::runtime_error("non-primary frame in exact primary replay");
+      }
+      std::map<size_t, std::string> driven;
+      for (const auto& [name, bits] : step.writes) {
+        const auto id = netlist_.node_ids.at(name);
+        const auto& node = netlist_.nodes.at(id);
+        if (bits.size() != node.Width() ||
+            bits.find_first_not_of("01x") != std::string::npos) {
+          throw std::runtime_error("invalid primary replay payload");
+        }
+        if (PrimaryInput(node)) {
+          if (bits.find('x') != std::string::npos) {
+            throw std::runtime_error("primary replay drive must be binary");
+          }
+          driven.emplace(id, bits);
+        } else if (node.kind != "DataRegister") {
+          throw std::runtime_error("non-primary drive in exact primary replay");
+        }
+      }
+      replay.TakeControlEvents();
+      if (!driven.empty()) replay.ApplyInputs(driven, check);
+      check(replay);
+      for (const auto& [id, bits] : driven) fill.at(id) = bits;
+      for (const auto& [id, value] : replay.TakeControlEvents()) {
+        fill.at(id) = value ? *value : initial_fill_.at(id);
+      }
+      if (step.primary_reads.empty()) continue;
+      Values concrete;
+      const auto seed = [&](size_t id) {
+        if (netlist_.nodes[id].model == ModelKind::kRegister ||
+            PrimaryInput(netlist_.nodes[id]) || replay.IsDriven(id)) {
+          concrete.emplace(id,
+                           SymbolicValue::Literal(context_, replay.Value(id)));
+        }
+      };
+      const auto& candidates = PrimaryStateCandidates();
+      if (candidates) {
+        for (size_t id : *candidates) seed(id);
+      } else {
+        for (size_t id = 0; id < netlist_.nodes.size(); ++id) seed(id);
+      }
+      SymbolicNetwork actual(netlist_, context_, std::move(concrete),
+                             global_resets_);
+      std::vector<BitReference> bits;
+      for (const auto& read : step.primary_reads) {
+        const Key key{read.bit.node, read.bit.index};
+        if (!requested.count(key) || !observed_bits.insert(key).second) {
+          throw std::runtime_error("unexpected primary replay observation");
+        }
+        const auto& route = data_read_routes_->routes.at(key).at(read.route);
+        for (const auto& guard : route.guards) {
+          if (!DataReadGuardActive(actual, guard).simplify().is_true()) {
+            throw std::runtime_error(
+                "actual primary read route is inactive or unknown");
+          }
+        }
+        bits.push_back(read.bit);
+      }
+      if (observe) observe(bits, replay.ReadBits(bits));
+    }
+    if (observed_bits != requested) {
+      throw std::runtime_error(
+          "primary replay did not observe every requested bit");
+    }
+    CheckPreservedValues(end_goals, &replay);
+    CheckPreservedValues(caller_goals, &replay);
+    state_.Restore(replay);
+    fill_ = std::move(fill);
+  }
   std::vector<ScanStep> ApplyCallerGoals(
       const std::vector<Operation>& operations, bool together,
       const std::map<size_t, std::string>& preserved, bool explicit_writes,
@@ -4489,6 +4593,10 @@ class ScanScheduler::Impl {
                                  global_resets_);
         for (const auto& choice : frame.reads) {
           if (!model.eval(choice.selected, true).is_true()) continue;
+          if (observe) {
+            step.primary_reads.push_back(
+                {{choice.bit.first, choice.bit.second}, choice.route});
+          }
           const auto& route = routes->routes.at(choice.bit).at(choice.route);
           for (const auto& guard : route.guards) {
             if (!DataReadGuardActive(observed, guard).simplify().is_true()) {
@@ -4932,6 +5040,7 @@ class ScanScheduler::Impl {
     Key target;
     char expected;
     z3::expr selected;
+    size_t route;
   };
   struct Frame {
     Values state, loads, fill;
@@ -6972,7 +7081,7 @@ class ScanScheduler::Impl {
                                        ? (expected == '1' ? '0' : '1')
                                        : expected;
               frame.comparisons.push_back(
-                  {path.output, {id, index}, compare, selected});
+                  {path.output, {id, index}, compare, selected, route});
               if (compare != 'x') {
                 const auto key = std::make_pair(
                     Key{path.output.node, path.output.index}, compare);
@@ -7302,6 +7411,13 @@ class ScanScheduler::Impl {
           }
         }
         if (observe && parallel) {
+          for (const auto& comparison : frame.comparisons) {
+            if (model.eval(comparison.selected, true).is_true()) {
+              step.primary_reads.push_back(
+                  {{comparison.target.first, comparison.target.second},
+                   comparison.route});
+            }
+          }
           std::vector<BitReference> bits;
           for (const auto& [id, requested] : data_reads) {
             if (!model.eval(frame.read.at(id), true).is_true()) continue;
@@ -8005,6 +8121,23 @@ std::vector<ScanStep> ScanScheduler::Apply(
   // Notify after commit and route cleanup, outside the solver's fill rollback.
   for (const auto& [bits, values] : observations) observe(bits, values);
   return steps;
+}
+void ScanScheduler::ReplayPrimary(
+    const std::vector<Operation>& operations,
+    const std::vector<ScanStep>& steps,
+    const std::map<size_t, std::string>& preserved,
+    const PioObservation& observe,
+    const std::map<size_t, std::string>& caller_goals) {
+  impl_->InvalidateRawRoute();
+  std::vector<std::pair<std::vector<BitReference>, std::string>> observations;
+  const Observation collect =
+      observe ? Observation{[&](const auto& bits, const auto& values) {
+        observations.emplace_back(bits, values);
+      }}
+              : Observation{};
+  impl_->ReplayPrimary(operations, steps, preserved, collect, caller_goals);
+  impl_->InvalidateRawRoute();
+  for (const auto& [bits, values] : observations) observe(bits, values);
 }
 std::vector<std::vector<Operation>> ScanScheduler::ResetPrerequisites(
     const std::vector<Operation>& operations,

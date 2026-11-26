@@ -19,6 +19,22 @@
 #include "pattern/pattern_values.h"
 
 namespace pattern {
+bool CanUsePrimaryCallbackReadback(const Netlist& netlist) {
+  bool callback = false, writes = false;
+  if (!netlist.taps.empty()) return false;
+  for (const auto& node : netlist.nodes) {
+    if (node.scan_interface || node.model == ModelKind::kAccessLink ||
+        node.kind.rfind("Scan", 0) == 0 ||
+        node.kind.find("Clock") != std::string::npos ||
+        node.kind.find("TCK") != std::string::npos) {
+      return false;
+    }
+    callback = callback || node.write_callback.has_value();
+    writes = writes || (node.kind == "DataRegister" &&
+                        node.inputs.count("WriteDataSource"));
+  }
+  return callback && writes;
+}
 namespace {
 std::optional<Netlist> ObservationNetlist(const Netlist& netlist) {
   if (std::none_of(netlist.nodes.begin(), netlist.nodes.end(),
@@ -58,6 +74,9 @@ class ModelReadback {
       opaque_ = std::make_unique<OpaqueScanQueue>(DescribeOpaqueScans(netlist));
     } else {
       scheduler_ = std::make_unique<ScanScheduler>(netlist_);
+    }
+    if (!physical && CanUsePrimaryCallbackReadback(netlist)) {
+      planning_ = std::make_unique<ScanScheduler>(netlist);
     }
     if (std::any_of(
             netlist.nodes.begin(), netlist.nodes.end(), [](const auto& node) {
@@ -99,7 +118,7 @@ class ModelReadback {
             if (pending->second.empty()) callback_pending.erase(pending);
           }
         }
-        if (op.callback_prerequisite) {
+        if (op.callback_prerequisite && !planning_) {
           throw std::runtime_error(
               op.origin +
               ": modeled readback excludes automatic callback histories");
@@ -379,10 +398,21 @@ class ModelReadback {
             "mixed raw preparation cannot use iApply -together");
       }
       if (raw_pending_.empty() || !pending_.Empty()) {
-        scheduler_->Apply(
-            accesses, raw_pending_.empty() && together, preserved, true,
-            physical_, bits.empty() ? ScanScheduler::PioObservation{} : observe,
-            op.callback_preserved);
+        if (planning_) {
+          const auto steps = planning_->Apply(
+              accesses, together, preserved, true, false,
+              [](const auto&, const auto&) {}, op.callback_preserved);
+          scheduler_->ReplayPrimary(
+              accesses, steps, preserved,
+              bits.empty() ? ScanScheduler::PioObservation{} : observe,
+              op.callback_preserved);
+        } else {
+          scheduler_->Apply(
+              accesses, raw_pending_.empty() && together, preserved, true,
+              physical_,
+              bits.empty() ? ScanScheduler::PioObservation{} : observe,
+              op.callback_preserved);
+        }
       }
       if (actual.find('?') != std::string::npos) {
         throw std::runtime_error(
@@ -407,6 +437,7 @@ class ModelReadback {
       }
     } else if (op.command == "iReset") {
       scheduler_->Reset(!args.empty(), physical_);
+      if (planning_) planning_->Reset(!args.empty(), false);
       MaskCallbackStorage();
       reservations_.Reset();
       pending_.Clear();
@@ -416,6 +447,11 @@ class ModelReadback {
       const auto target = ResolvePdlTarget(netlist_, args.at(0));
       auto bits = PdlNumber(context_, args.at(1), target.bits.size());
       if (args.size() != 3 || args[2] == "-LastWrittenValue") {
+        if (planning_) {
+          planning_->Assume(
+              args[0], bits,
+              reservations_.CallbackConstraints(op, pending_, planning_.get()));
+        }
         for (size_t i = 0; i < target.bits.size(); ++i) {
           if (callback_storage_.at(target.bits[i].node)) bits[i] = 'x';
         }
@@ -450,6 +486,7 @@ class ModelReadback {
   std::vector<std::pair<std::string, std::string>> callback_unknown_;
   z3::context context_;
   std::unique_ptr<ScanScheduler> scheduler_;
+  std::unique_ptr<ScanScheduler> planning_;
   std::unique_ptr<OpaqueScanQueue> opaque_;
   std::map<std::tuple<bool, std::string, std::string>, Operation> raw_pending_;
   size_t raw_pending_bits_ = 0;

@@ -7379,9 +7379,124 @@ void TestGroupedScanEndpoints() {
   }
 }
 
+void TestActualPrimaryReplay() {
+  pattern::Design design;
+  design.AddIcl("actual_primary.icl", R"(
+Module Top {
+ DataInPort en; DataInPort p[3:0];
+ DataInPort spare[3:0]; DataOutPort spare_out[3:0] {Source spare;}
+ DataRegister value[3:0] {WriteCallBack Top store <D>; ResetValue 0;}
+ DataRegister dest[3:0] {WriteDataSource value; WriteEnSource en; ResetValue 0;}
+ DataOutPort endpoint[3:0] {Source p;}
+ DataOutPort q[3:0] {Source dest;}
+ Alias pair[7:0] = endpoint, spare_out {AccessTogether;}
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::ScanScheduler ordinary(netlist);
+  ordinary.Reset();
+  const auto ordinary_steps =
+      ordinary.Apply({{"iRead", {"endpoint", "0"}, "test", {}}});
+  Require(
+      std::all_of(ordinary_steps.begin(), ordinary_steps.end(),
+                  [](const auto& step) { return step.primary_reads.empty(); }),
+      "ordinary planning must not allocate unused primary read provenance");
+  pattern::ScanScheduler planner(netlist), actual(netlist);
+  planner.Reset();
+  actual.Reset();
+  actual.Assume("value", "xxxx");
+  const auto plan = [&](const std::vector<pattern::Operation>& operations) {
+    return planner.Apply(operations, false, {}, true, false,
+                         [](const auto&, const auto&) {});
+  };
+  const auto run = [&](const std::vector<pattern::Operation>& operations) {
+    const auto steps = plan(operations);
+    actual.ReplayPrimary(operations, steps);
+  };
+  run({{"iWrite", {"en", "0"}, "test", {}},
+       {"iWrite", {"p", "9"}, "test", {}}});
+  planner.Assume("value", "1001");
+  run({{"iWrite", {"dest", "9"}, "test", {}}});
+  Require(actual.Value("p") == "1001" && actual.Value("dest") == "xxxx",
+          "exact inputs preserve actual unknown callback loads");
+  pattern::ScanStep marker;
+  marker.writes.emplace("dest", "1111");
+  actual.ReplayPrimary({}, {marker});
+  Require(actual.Value("dest") == "xxxx",
+          "goal markers never assume actual data");
+  planner.Assume("value", "1101");
+  planner.Assume("dest", "0101");
+  actual.Assume("dest", "0101");
+  const std::vector<pattern::Operation> mixed{
+      {"iRead", {"dest", "0"}, "test", {}},
+      {"iWrite", {"dest", "13"}, "test", {}}};
+  const auto mixed_steps = plan(mixed);
+  std::map<int64_t, char> observed;
+  actual.ReplayPrimary(mixed, mixed_steps, {},
+                       [&](const auto& bits, const auto& values) {
+                         for (size_t i = 0; i < bits.size(); ++i) {
+                           observed.emplace(bits[i].index, values[i]);
+                         }
+                       });
+  std::string old;
+  for (int64_t bit = 3; bit >= 0; --bit) old += observed.at(bit);
+  Require(old == "0101" && actual.Value("dest") == "xxxx",
+          "read-only frame observes old5 before real unknown write, without an "
+          "extra event");
+  const std::vector<pattern::Operation> endpoint{
+      {"iWrite", {"p", "2"}, "test", {}},
+      {"iRead", {"endpoint", "0"}, "test", {}}};
+  const auto steps = plan(endpoint);
+  auto bad = steps;
+  bad.push_back(steps.back());
+  size_t calls = 0;
+  bool rejected = false;
+  try {
+    actual.ReplayPrimary(endpoint, bad, {},
+                         [&](const auto&, const auto&) { ++calls; });
+  } catch (const std::exception&) {
+    rejected = true;
+  }
+  Require(
+      rejected && calls == 0 && actual.Value("p") == "1001",
+      "late malformed frame rolls back state and publishes no observations");
+  rejected = false;
+  try {
+    actual.ReplayPrimary(endpoint, steps, {}, [&](const auto&, const auto&) {
+      ++calls;
+      throw std::runtime_error("listener failure");
+    });
+  } catch (const std::exception& error) {
+    rejected = std::string(error.what()) == "listener failure";
+  }
+  Require(rejected && calls == 1 && actual.Value("p") == "0010",
+          "subscriber failure retains committed actual input state");
+  run({{"iWrite", {"p", "9"}, "test", {}},
+       {"iWrite", {"spare", "5"}, "test", {}}});
+  const std::vector<pattern::Operation> group{
+      {"iRead", {"pair", "149"}, "test", {}}};
+  const auto group_steps = plan(group);
+  std::map<std::pair<size_t, int64_t>, char> grouped;
+  actual.ReplayPrimary(
+      group, group_steps, {}, [&](const auto& bits, const auto& values) {
+        for (size_t i = 0; i < bits.size(); ++i) {
+          grouped.emplace(std::make_pair(bits[i].node, bits[i].index),
+                          values[i]);
+        }
+      });
+  std::string pair;
+  for (const auto& bit : pattern::ResolvePdlTarget(netlist, "pair").bits) {
+    pair += grouped.at({bit.node, bit.index});
+  }
+  Require(pair == "10010101",
+          "general grouped frames retain selected logical primary routes");
+}
 }  // namespace
 int main(int argc, char* argv[]) {
   try {
+    if (argc == 2 && std::string(argv[1]) == "--actual-primary") {
+      TestActualPrimaryReplay();
+      return 0;
+    }
     if (argc == 2 && std::string(argv[1]) == "--merged-callbacks") {
       TestCallbackMergeBarriers();
       return 0;
@@ -7469,6 +7584,7 @@ int main(int argc, char* argv[]) {
     TestRawTapUnknownStableRollback();
     TestPrimaryDataEvents();
     TestPrimaryCallbackStateSnapshots();
+    TestActualPrimaryReplay();
     TestModeledParallelRawScans();
     TestParallelRawRollbackAndImplicitFill();
     TestParallelRawObservationCommit();
