@@ -11,6 +11,7 @@
 
 #include "pattern/pattern_flatten.h"
 #include "pattern/pattern_values.h"
+#include "pdl/pdl_document.h"
 
 namespace pattern {
 namespace {
@@ -74,9 +75,12 @@ void SystemClocks::CheckCycle(Bit target, BitReference source) const {
     }
   }
 }
-void SystemClocks::Override(const Operation& operation, z3::context& context) {
+void SystemClocks::Override(const Operation& operation, z3::context& context,
+                            Operation* normalized) {
   const auto& args = operation.arguments;
-  if (args.empty() || args.size() % 2 == 0) {
+  const bool period = args.size() > 1 && args[1] == "-period";
+  if (args.empty() ||
+      (period ? args.size() != 3 && args.size() != 4 : args.size() % 2 == 0)) {
     throw std::runtime_error("invalid iClockOverride arguments");
   }
   const auto target = Target(ClockTargetName(args[0]));
@@ -90,48 +94,62 @@ void SystemClocks::Override(const Operation& operation, z3::context& context) {
         "oscillator/differential clock override is unsupported");
   }
   Definition definition;
+  Operation rendered;
+  if (normalized) {
+    rendered = operation;
+    rendered.arguments[0] = Name(target);
+  }
   definition.version = version_ + 1;
   definition.multiplier = Factor(node, "FreqMultiplier");
   definition.divider = Factor(node, "FreqDivider");
   const auto source = node.inputs.find("Source");
-  if (source != node.inputs.end()) {
+  if (!period && source != node.inputs.end()) {
     definition.source = source->second.at(Offset(node, target.second));
   }
   std::set<std::string> options;
-  for (size_t i = 1; i < args.size(); i += 2) {
-    const auto& option = args[i];
-    if (!options.insert(option).second) {
-      throw std::runtime_error("duplicate iClockOverride option");
-    }
-    if (option == "-source") {
-      const auto bit = Target(ClockTargetName(args[i + 1]));
-      definition.source = {bit.first, bit.second};
-    } else if (option == "-freqMultiplier" || option == "-freqDivider") {
-      const auto bits = PdlNumber(context, args[i + 1], 64);
-      uint64_t value = 0;
-      for (char bit : bits) {
-        if (bit == 'x') {
-          throw std::runtime_error(
-              "clock override factor must be known and positive");
+  if (period) {
+    const auto value =
+        pdl::NormalizeClockPeriod(args[2], args.size() == 4 ? args[3] : "");
+    definition.oscillator = true;
+    definition.multiplier = definition.divider = 1;
+    if (normalized) rendered.arguments = {Name(target), "-period", value};
+  } else {
+    for (size_t i = 1; i < args.size(); i += 2) {
+      const auto& option = args[i];
+      if (!options.insert(option).second) {
+        throw std::runtime_error("duplicate iClockOverride option");
+      }
+      if (option == "-source") {
+        const auto bit = Target(ClockTargetName(args[i + 1]));
+        definition.source = {bit.first, bit.second};
+        if (normalized) rendered.arguments[i + 1] = Name(bit);
+      } else if (option == "-freqMultiplier" || option == "-freqDivider") {
+        const auto bits = PdlNumber(context, args[i + 1], 64);
+        uint64_t value = 0;
+        for (char bit : bits) {
+          if (bit == 'x') {
+            throw std::runtime_error(
+                "clock override factor must be known and positive");
+          }
+          value = (value << 1) | (bit == '1');
         }
-        value = (value << 1) | (bit == '1');
+        if (!value) {
+          throw std::runtime_error("clock override factor must be positive");
+        }
+        (option == "-freqMultiplier" ? definition.multiplier
+                                     : definition.divider) = value;
+      } else {
+        throw std::runtime_error("unknown iClockOverride option: " + option);
       }
-      if (!value) {
-        throw std::runtime_error("clock override factor must be positive");
-      }
-      (option == "-freqMultiplier" ? definition.multiplier
-                                   : definition.divider) = value;
-    } else {
-      throw std::runtime_error("unknown iClockOverride option: " + option);
     }
-  }
-  // Factor-only updates may leave only an earlier checked oscillator usable.
-  if (node.clock_period && options.empty()) {
-    throw std::runtime_error("oscillator override requires explicit -source");
-  }
-  if (!node.clock_period && source == node.inputs.end() &&
-      !options.count("-source")) {
-    throw std::runtime_error("clock override requires a source");
+    // Factor-only updates may leave only an earlier checked oscillator usable.
+    if (node.clock_period && options.empty()) {
+      throw std::runtime_error("oscillator override requires explicit -source");
+    }
+    if (!node.clock_period && source == node.inputs.end() &&
+        !options.count("-source")) {
+      throw std::runtime_error("clock override requires a source");
+    }
   }
   BuildSafety();
   if (unsafe_.count(target)) {
@@ -144,6 +162,10 @@ void SystemClocks::Override(const Operation& operation, z3::context& context) {
   if (definition.source.node < netlist_.nodes.size()) {
     fanout_[{definition.source.node, definition.source.index}].insert(target);
   }
+  if (normalized) *normalized = std::move(rendered);
+}
+std::string SystemClocks::TargetName(const std::string& target) const {
+  return Name(Target(ClockTargetName(target)));
 }
 void SystemClocks::Invalidate() {
   routes_.clear();
@@ -289,11 +311,14 @@ SystemClocks::Route SystemClocks::Resolve(Bit bit,
       throw std::runtime_error("cyclic system-clock path");
     }
     const auto& node = netlist_.nodes.at(next.first);
+    const auto* definition =
+        node.kind == "ToClockPort" ? DefinitionAt(next, version) : nullptr;
     if ((node.kind == "ClockPort" && node.scope == 0 &&
          !node.inputs.count("Source") &&
          !node.inputs.count("DifferentialInvOf")) ||
-        (node.kind == "ToClockPort" && node.clock_period &&
-         !DefinitionAt(next, version))) {
+        (node.kind == "ToClockPort" &&
+         (definition ? definition->oscillator
+                     : node.clock_period.has_value()))) {
       Route route;
       route.root = route.phase_origin = next;
       routes_.emplace(next, route);

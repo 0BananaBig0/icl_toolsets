@@ -350,7 +350,14 @@ std::string Generate(
     const pattern::ResourceReservations* initial_reservations = nullptr,
     bool finalize = true, const pattern::SystemClocks* initial_clocks = nullptr,
     ResetVariants* variants = nullptr, bool physical = false,
-    ResetOccurrences* occurrences = nullptr, bool modeled_readback = false) {
+    ResetOccurrences* occurrences = nullptr, bool modeled_readback = false,
+    bool retain_clocks = false) {
+  retain_clocks =
+      retain_clocks ||
+      std::any_of(operations.begin(), operations.end(), [](const auto& op) {
+        return op.command == "iClockOverride" && op.arguments.size() > 1 &&
+               op.arguments[1] == "-period";
+      });
   pattern::ScanScheduler::Observation observe;
   if (modeled_readback) observe = [](const auto&, const auto&) {};
   if (physical) {
@@ -472,7 +479,7 @@ std::string Generate(
             ResetEdits strict;
             Generate(netlist, group, nullptr, &strict, nullptr, &scheduler,
                      &reservations, false, &clocks, nullptr, physical, nullptr,
-                     modeled_readback);
+                     modeled_readback, retain_clocks);
             ready = true;
           } catch (const std::runtime_error&) {
             // A failed preview leaves the live state for prerequisite planning.
@@ -680,10 +687,32 @@ std::string Generate(
         pending_scan_bits = 0;
         result += synchronous ? "iReset -sync\n" : "iReset\n";
       } else if (operation.command == "iClockOverride") {
-        clocks.Override(operation, context);
+        if (retain_clocks && (operation.arguments.size() < 2 ||
+                              operation.arguments[1] != "-period")) {
+          for (const auto* option :
+               {"-source", "-freqMultiplier", "-freqDivider"}) {
+            if (std::find(operation.arguments.begin(),
+                          operation.arguments.end(),
+                          option) == operation.arguments.end()) {
+              throw std::runtime_error(
+                  "period-bearing clock programs require explicit source and "
+                  "both frequency factors");
+            }
+          }
+        }
+        pattern::Operation normalized;
+        clocks.Override(operation, context,
+                        retain_clocks ? &normalized : nullptr);
+        if (retain_clocks) {
+          normalized.arguments.insert(normalized.arguments.begin(),
+                                      normalized.command);
+          result += Command(normalized.arguments);
+        }
       } else if (operation.command == "iClock") {
+        const auto& target = operation.arguments.at(0);
+        const auto root = clocks.Check(target, scheduler);
         result += Command(
-            {"iClock", clocks.Check(operation.arguments.at(0), scheduler)});
+            {"iClock", retain_clocks ? clocks.TargetName(target) : root});
       } else if (operation.command == "iRunLoop") {
         const auto caller_values =
             reservations.CallbackValues(operation, pending);
@@ -731,7 +760,9 @@ std::string Generate(
             const auto wait =
                 clocks.Wait(system_clock, cycles, scheduler, preserved);
             result += Command(
-                {"iRunLoop", std::to_string(wait.second), "-sck", wait.first});
+                {"iRunLoop",
+                 std::to_string(retain_clocks ? cycles : wait.second), "-sck",
+                 retain_clocks ? clocks.TargetName(system_clock) : wait.first});
           }
         }
       } else if (operation.command == "iState") {
@@ -940,7 +971,9 @@ int main(int argc, char** argv) {
            "Standalone iRunLoop TCK waits need no reset. iClock and -sck "
            "support\n"
            "relative clock-only routes, differential partners, Period "
-           "oscillators and versioned iClockOverride.\n"
+           "oscillators and versioned iClockOverride, including -period.\n"
+           "Period-bearing programs retain logical clock statements; mixed\n"
+           "source overrides require source and both frequency factors.\n"
            "Absolute-time waits require models without storage, clock-driven "
            "data,\n"
            "or forwarded test clocks.\n"

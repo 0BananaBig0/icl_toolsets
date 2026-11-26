@@ -3922,6 +3922,71 @@ void TestClockOverrideSnapshots() {
               scheduler.Value("second") == "x",
           "override declarations and waits preserve hardware state");
 }
+void TestClockPeriodOverrideSnapshots() {
+  pattern::Design design;
+  design.AddIcl("period-overrides.icl", R"(Module Pll {
+    ClockPort ck;
+    ToClockPort osc {Source ck; FreqMultiplier 3; FreqDivider 2;}
+  }
+  Module Top {
+    ClockPort root;
+    Instance pll Of Pll {InputPort ck=root;}
+    ToClockPort slow {Source pll.osc; FreqDivider 2;}
+    ToClockPort fast {Source pll.osc; FreqMultiplier 3;}
+    ScanInPort si; ScanRegister value[3:0] {ScanInSource si; ResetValue 0;}
+    ScanOutPort so {Source value[0];}
+  })");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Assume("value", "1010");
+  pattern::SystemClocks clocks(netlist);
+  z3::context context;
+  Require(clocks.Check("slow", scheduler) == "root" &&
+              clocks.Wait("slow", 6, scheduler) ==
+                  std::make_pair(std::string("root"), uint64_t{8}),
+          "the original checked slow clock retains its three-fourths ratio");
+  const pattern::Operation input{
+      "iClockOverride", {"pll.osc", "-period", "20", "ns"}, "period:1", {}};
+  pattern::Operation normalized;
+  clocks.Override(input, context, &normalized);
+  Require(normalized.arguments ==
+                  std::vector<std::string>({"pll.osc", "-period", "20ns"}) &&
+              input.arguments.size() == 4 &&
+              clocks.TargetName("pll.osc") == "pll.osc",
+          "period normalization preserves caller input and canonical target "
+          "identity");
+  Require(clocks.Check("fast", scheduler) == "pll.osc" &&
+              clocks.Wait("fast", 6, scheduler).second == 2 &&
+              clocks.Wait("slow", 6, scheduler).first == "root" &&
+              clocks.Wait("slow", 6, scheduler).second == 8,
+          "an explicit oscillator root leaves another checked target's old "
+          "route intact");
+  auto copy = clocks;
+  clocks.Override(
+      {"iClockOverride", {"pll.osc", "-period", "1.25us"}, "period:2", {}},
+      context);
+  Require(clocks.Check("slow", scheduler) == "pll.osc" &&
+              clocks.Wait("slow", 6, scheduler).second == 12 &&
+              copy.Wait("slow", 6, scheduler).first == "root",
+          "period versions survive independent clock-state copies");
+  normalized.arguments = {"sentinel"};
+  bool rejected = false;
+  try {
+    clocks.Override(
+        {"iClockOverride", {"pll.osc", "-period", "0ns"}, "period:3", {}},
+        context, &normalized);
+  } catch (const std::runtime_error& error) {
+    rejected = std::string(error.what()).find("positive") != std::string::npos;
+  }
+  Require(rejected &&
+              normalized.arguments == std::vector<std::string>({"sentinel"}) &&
+              clocks.Check("fast", scheduler) == "pll.osc" &&
+              clocks.Wait("fast", 6, scheduler).second == 2 &&
+              scheduler.Value("value") == "1010" &&
+              scheduler.Value("root") == "x",
+          "a rejected period preserves normalized output, clock definitions "
+          "and hardware state");
+}
 void TestClockOverrideScale() {
   std::string source =
       "Module Stage { ClockPort ck; ToClockPort out { Source ck; } } "
@@ -7712,6 +7777,7 @@ int main(int argc, char* argv[]) {
         TestClockUnrelatedConsumers();
         TestBoundDifferentialClocks();
         TestClockOverrideSnapshots();
+        TestClockPeriodOverrideSnapshots();
         TestOscillatorSourceOverrides();
         return 0;
       }
@@ -7784,6 +7850,7 @@ int main(int argc, char* argv[]) {
     TestClockUnrelatedConsumers();
     TestBoundDifferentialClocks();
     TestClockOverrideSnapshots();
+    TestClockPeriodOverrideSnapshots();
     TestClockOverrideScale();
     TestRelativeSystemClocks();
     TestOscillatorWaits();

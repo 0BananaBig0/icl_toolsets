@@ -171,6 +171,18 @@ class Formatter(unittest.TestCase):
             self.assertEqual(self.run_format(HEADER + command + '\n').returncode, 2)
         self.assertEqual(self.run_format(HEADER + 'iScan si 8 -si { 0b0011\n  xx01 }\n').returncode, 0)
 
+    def test_clock_period_override_arguments(self):
+        for level in (0, 1):
+            header = HEADER.replace('iPDLLevel 1', f'iPDLLevel {level}')
+            for period in ('17', '17ns', '17 ns', '1.25us', '1.0e-9s'):
+                run = self.run_format(header + f'iClockOverride osc -period {period}\n')
+                self.assertEqual(run.returncode, 0, run.stderr)
+                self.assertEqual(self.run_format(run.stdout).stdout, run.stdout)
+            for period in ('0', '0.0e-999ns', '-1ns', '1bogus', '1ns ns'):
+                run = self.run_format(header + f'iClockOverride osc -period {period}\n')
+                self.assertEqual(run.returncode, 2, run.stderr)
+                self.assertIn('period', run.stderr)
+
     def test_comments_strings_continuations_and_unknown_commands(self):
         source = HEADER + '# top\niProc run {} {\n# nested\nset s "a; # literal\\ntext"\ncustom {opaque; data} \\\n  more\niWrite reg(7:0) 0xA5; # trailing\niApply\n}\n'
         run = self.run_format(source)
@@ -452,6 +464,14 @@ class LanguageServer(unittest.TestCase):
         expected = subprocess.run([FORMATTER, '--indent', '4'], input=text,
                                   text=True, capture_output=True, check=True).stdout
         self.assertEqual(edits[0]['newText'], expected)
+
+    def test_clock_period_diagnostics_are_shared(self):
+        for version, period in enumerate(('17ns', '0ns', '1.25us'), start=1):
+            text = HEADER + f'iClockOverride osc -period {period}\n'
+            diagnostics = self.open(text, version)['diagnostics']
+            self.assertEqual(bool(diagnostics), period == '0ns')
+            if diagnostics:
+                self.assertIn('period', diagnostics[0]['message'])
 
     def test_imported_icl_document_cannot_be_formatted_as_pdl(self):
         self.uri = (self.root / 'model.icl').as_uri()

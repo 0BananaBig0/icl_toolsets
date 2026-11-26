@@ -21,7 +21,9 @@ namespace pattern {
 class SystemClocks {
  public:
   explicit SystemClocks(const Netlist& netlist) : netlist_(netlist) {}
-  void Override(const Operation& operation, z3::context& context);
+  void Override(const Operation& operation, z3::context& context,
+                Operation* normalized = nullptr);
+  std::string TargetName(const std::string& target) const;
   std::string Check(const std::string& target, const ScanScheduler& scheduler);
   std::pair<std::string, uint64_t> Wait(
       const std::string& target, uint64_t cycles,
@@ -47,6 +49,7 @@ class SystemClocks {
     size_t version = 0;
     BitReference source;
     uint64_t multiplier = 1, divider = 1;
+    bool oscillator = false;
   };
   const Definition* DefinitionAt(Bit bit, size_t version) const;
   void CheckCycle(Bit target, BitReference source) const;

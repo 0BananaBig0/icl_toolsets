@@ -291,6 +291,12 @@ bool IsNumber(const std::string& text) {
              });
 }
 
+bool IsTimeUnit(const std::string& text) {
+  static const std::set<std::string> kUnits = {"s",  "ms", "us", "ns",
+                                               "ps", "fs", "as"};
+  return kUnits.count(text) != 0;
+}
+
 bool IsTime(const std::string& text) {
   size_t i = 0;
   const auto digits = [&]() {
@@ -309,9 +315,7 @@ bool IsTime(const std::string& text) {
     ++i;
     if (i == text.size() || text[i++] != '-' || !digits()) return false;
   }
-  static const std::set<std::string> kUnits = {"s",  "ms", "us", "ns",
-                                               "ps", "fs", "as"};
-  return kUnits.count(text.substr(i)) != 0;
+  return IsTimeUnit(text.substr(i));
 }
 
 bool IsVector(const std::string& text) {
@@ -1203,14 +1207,30 @@ void Document::Analyze(std::vector<Command>* commands, Context context,
       }
     }
     if (name == "iClockOverride") {
-      check_options(
-          2, {{"-source", 1}, {"-freqMultiplier", 1}, {"-freqDivider", 1}});
-      for (size_t i = 2; i + 1 < words.size(); i += 2) {
-        if (literal(i) == "-source") {
-          check_identifier(i + 1, IsHierSignal);
-        } else if (literal(i) == "-freqMultiplier" ||
-                   literal(i) == "-freqDivider") {
-          check_number(i + 1, false, false);
+      if (words.size() > 2 && literal(2) == "-period") {
+        if (words.size() != 4 && words.size() != 5) {
+          Error(words[2].range,
+                "period form expects one value and optional time unit");
+        } else if ((words[3].literal || context.level == 0) &&
+                   (words.size() == 4 || words[4].literal ||
+                    context.level == 0)) {
+          try {
+            NormalizeClockPeriod(literal(3),
+                                 words.size() == 5 ? literal(4) : "");
+          } catch (const std::runtime_error& error) {
+            Error(words[3].range, error.what());
+          }
+        }
+      } else {
+        check_options(
+            2, {{"-source", 1}, {"-freqMultiplier", 1}, {"-freqDivider", 1}});
+        for (size_t i = 2; i + 1 < words.size(); i += 2) {
+          if (literal(i) == "-source") {
+            check_identifier(i + 1, IsHierSignal);
+          } else if (literal(i) == "-freqMultiplier" ||
+                     literal(i) == "-freqDivider") {
+            check_number(i + 1, false, false);
+          }
         }
       }
     }
@@ -1721,6 +1741,29 @@ std::vector<SymbolRef> Workspace::Complete(const Document& document,
 std::string Workspace::Uri(const Document* document) const {
   const auto found = uris_.find(document);
   return found == uris_.end() ? "" : found->second;
+}
+
+std::string NormalizeClockPeriod(const std::string& value,
+                                 const std::string& unit) {
+  std::string result;
+  if (!unit.empty()) {
+    if (!IsTimeUnit(unit) || !IsTime(value + "ns")) {
+      throw std::runtime_error("invalid clock period value or time unit");
+    }
+    result = value + unit;
+  } else if (IsTime(value)) {
+    result = value;
+  } else if (IsTime(value + "ns")) {
+    result = value + "ns";
+  } else {
+    throw std::runtime_error("invalid clock period value or time unit");
+  }
+  const auto mantissa =
+      result.substr(0, result.find_first_not_of("0123456789."));
+  if (mantissa.find_first_of("123456789") == std::string::npos) {
+    throw std::runtime_error("clock period must be positive");
+  }
+  return result;
 }
 
 const std::vector<std::string>& Keywords() {

@@ -15,6 +15,8 @@
 namespace pdl {
 // Tcl list syntax is shared by static validation and generator execution.
 std::vector<std::string> SplitList(const std::string& text, bool* valid);
+std::string NormalizeClockPeriod(const std::string& value,
+                                 const std::string& unit = "");
 
 struct CommandSpec {
   int minimum, maximum, level;
