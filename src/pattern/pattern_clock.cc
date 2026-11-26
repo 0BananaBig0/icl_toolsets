@@ -3,6 +3,7 @@
 #include "pattern/pattern_clock.h"
 
 #include <algorithm>
+#include <array>
 #include <charconv>
 #include <limits>
 #include <numeric>
@@ -35,6 +36,40 @@ uint64_t Product(uint64_t a, uint64_t b) {
     throw std::runtime_error("system-clock frequency ratio limit exceeded");
   }
   return a * b;
+}
+std::pair<std::string, std::string> PeriodWords(const std::string& value) {
+  const auto suffix = value.find_last_of("0123456789") + 1;
+  const auto number = value.substr(0, suffix), unit = value.substr(suffix);
+  if (number.find_first_not_of("0123456789") == std::string::npos) {
+    return {number, unit};
+  }
+  auto digits = number;
+  uint64_t exponent = 0;
+  const auto e = number.find_first_of("eE");
+  if (e != std::string::npos) {
+    const auto parsed = std::from_chars(
+        number.data() + e + 2, number.data() + number.size(), exponent);
+    if (parsed.ec != std::errc{} || exponent > number.size() + 18) {
+      return {number, unit};
+    }
+    digits.resize(e);
+  }
+  const auto dot = digits.find('.');
+  const auto fraction = digits.size() - dot - 1;
+  digits.erase(dot, 1);
+  const auto zeros = digits.size() - digits.find_last_not_of('0') - 1;
+  digits.resize(digits.size() - zeros);
+  digits.erase(0, digits.find_first_not_of('0'));
+  static constexpr std::array<const char*, 7> kUnits = {"as", "fs", "ps", "ns",
+                                                        "us", "ms", "s"};
+  auto index = std::find(kUnits.begin(), kUnits.end(), unit) - kUnits.begin();
+  const __int128_t power =
+      static_cast<__int128_t>(index) * 3 + zeros - fraction - exponent;
+  // Tessent 2026.2 needs integer/unit words; finer native values stay exact.
+  if (power < 0) return {number, unit};
+  while (index && index * 3 > power) --index;
+  return {digits + std::string(static_cast<size_t>(power - index * 3), '0'),
+          kUnits.at(index)};
 }
 }  // namespace
 const SystemClocks::Definition* SystemClocks::DefinitionAt(
@@ -112,7 +147,10 @@ void SystemClocks::Override(const Operation& operation, z3::context& context,
         args[2], args.size() == 4 ? std::make_optional(args[3]) : std::nullopt);
     definition.oscillator = true;
     definition.multiplier = definition.divider = 1;
-    if (normalized) rendered.arguments = {Name(target), "-period", value};
+    if (normalized) {
+      const auto words = PeriodWords(value);
+      rendered.arguments = {Name(target), "-period", words.first, words.second};
+    }
   } else {
     for (size_t i = 1; i < args.size(); i += 2) {
       const auto& option = args[i];

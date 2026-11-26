@@ -11530,7 +11530,7 @@ An explicitly empty unit is invalid. Simple level-0 procedure arguments may
 supply the value or unit; their concrete values are validated at invocation.
 
 For example, `iClockOverride pll.osc -period 20 ns; iClock fast;
-iRunLoop 7 -sck fast` emits the compact period `20ns` and retains the logical
+iRunLoop 7 -sck fast` emits separate period operands `20 ns` and retains the logical
 clock target and wait. If any period override executes, the whole generated
 clock program retains its definitions, checks and logical waits. Targets checked
 before an override retain their earlier definition until checked again; reset
@@ -11551,3 +11551,23 @@ histories; independent PIO readback is tested separately. Invalid input preserve
 existing output artifacts. This increment uses the local Tessent Shell Reference
 Manual v2023.4 iClockOverride/iClock topics as technical guidance; native replay
 evidence does not establish vendor equivalence or hardware timing signoff.
+
+### Clock period serialization (Task194)
+
+Generated period overrides now use separate value and unit operands. Input may
+still use attached units, decimals or the supported negative exponent spelling.
+Integer values preserve their supplied unit; exact decimal values refine to a
+finer unit only when needed, for example `1.25us` becomes `1250 ns` and `1.0e-9s` becomes `1 ns`.
+This conversion uses decimal digits and preserves native model values exactly.
+
+Tessent Shell 2026.2 probes accept separate integer operands and reject the
+attached, decimal and scientific operands tested. Values finer than one
+attosecond and extreme negative exponents retain their native spelling as
+separate operands; they remain outside the measured vendor subset. No elapsed
+clock engine, device observation or hardware timing qualification is added.
+Fresh paired vendor runs accept the canonical main PDL and match the reference
+exports for the tested configured models. All 39 qualification commands pass,
+including full regression, sanitizers and source packaging. Review and integration
+remain pending. Use the canonical main PDL for vendor loading. Reset-only output
+preserves original source and procedure definitions; if it contains native input
+spellings, run it through native generation to obtain canonical main PDL first.

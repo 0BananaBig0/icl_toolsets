@@ -3949,8 +3949,8 @@ void TestClockPeriodOverrideSnapshots() {
       "iClockOverride", {"pll.osc", "-period", "20", "ns"}, "period:1", {}};
   pattern::Operation normalized;
   clocks.Override(input, context, &normalized);
-  Require(normalized.arguments ==
-                  std::vector<std::string>({"pll.osc", "-period", "20ns"}) &&
+  Require(normalized.arguments == std::vector<std::string>(
+                                      {"pll.osc", "-period", "20", "ns"}) &&
               input.arguments.size() == 4 &&
               clocks.TargetName("pll.osc") == "pll.osc",
           "period normalization preserves caller input and canonical target "

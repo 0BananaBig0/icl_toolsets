@@ -28,9 +28,9 @@ class ClockPeriodOverrides(unittest.TestCase):
     rejected = helpers.SystemClocks.rejected
 
     def test_period_default_units_and_literal_forms(self):
-        for spelling, expected in (('20', '20ns'), ('20 ns', '20ns'),
-                                   ('1.25us', '1.25us'), ('1.0e-9s', '1.0e-9s'),
-                                   ('7as', '7as')):
+        for spelling, expected in (('20', '20 ns'), ('20 ns', '20 ns'),
+                                   ('1.25us', '1250 ns'), ('1.0e-9s', '1 ns'),
+                                   ('7as', '7 as')):
             with self.subTest(period=spelling):
                 output = self.replay(OSC, f'iClockOverride osc -period {spelling}; '
                                      'iClock osc; iRunLoop 2 -sck osc\n')
@@ -49,9 +49,9 @@ iClock slow; iRunLoop 9 -sck slow
         clocks = [line for line in output.splitlines()
                   if line.startswith(('iClock ', 'iClockOverride ', 'iRunLoop '))]
         self.assertEqual(clocks, [
-            'iClock slow', 'iClockOverride pll.osc -period 20ns', 'iClock fast',
+            'iClock slow', 'iClockOverride pll.osc -period 20 ns', 'iClock fast',
             'iRunLoop 5 -sck slow', 'iRunLoop 7 -sck fast',
-            'iClockOverride pll.osc -period 1us', 'iRunLoop 3 -sck slow',
+            'iClockOverride pll.osc -period 1 us', 'iRunLoop 3 -sck slow',
             'iRunLoop 4 -sck fast', 'iClock slow', 'iRunLoop 9 -sck slow'])
 
     def test_explicit_mixed_sources_and_ratios_are_retained(self):
@@ -82,8 +82,8 @@ iClockOverride cell.out[4] -period 2us
 iClock cell.out(4); iRunLoop 3 -sck cell.out[4]
 iReset; iRunLoop 5 -sck cell.out(5)
 ''')
-        self.assertIn('iClockOverride cell.out(5) -period 17ns', output)
-        self.assertIn('iClockOverride cell.out(4) -period 2us', output)
+        self.assertIn('iClockOverride cell.out(5) -period 17 ns', output)
+        self.assertIn('iClockOverride cell.out(4) -period 2 us', output)
         self.assertIn('iRunLoop 5 -sck cell.out(5)', output)
 
     def test_invalid_periods_and_partial_mixes_preserve_artifacts(self):
@@ -103,8 +103,8 @@ iReset; iRunLoop 5 -sck cell.out(5)
 
     def test_level_zero_numeric_formals(self):
         for formals, period, arguments, expected in (
-                ('p', '$p', '20', '20ns'), ('p', '$p us', '20', '20us'),
-                ('p unit', '$p $unit', '20 ps', '20ps')):
+                ('p', '$p', '20', '20 ns'), ('p', '$p us', '20', '20 us'),
+                ('p unit', '$p $unit', '20 ps', '20 ps')):
             with self.subTest(period=period):
                 icl, pdl = self.files(OSC, f'iProc configure {{{formals}}} {{'
                                      f'iClockOverride osc -period {period}; iClock osc}}; '
@@ -138,7 +138,7 @@ Module Top {ClockPort root[2:1]; Instance c Of Cell {InputPort ref=root;}}'''
         output = helpers.SystemClocks.physical_clock_replay(self, source, original, physical)
         self.assertEqual([line for line in output.splitlines()
                           if line.startswith('iClockOverride ')], [
-            'iClockOverride c.out(5) -period 7ps',
+            'iClockOverride c.out(5) -period 7 ps',
             'iClockOverride c.out(4) -source c.ref(8) -freqMultiplier 2 -freqDivider 1'])
 
     def test_local_reset_groups_and_actual_pio_history(self):
@@ -217,7 +217,7 @@ iRead observed 9; iApply
                         bit, period, cycles = i % count, 11 + i % 97, 1 + i % 7
                         commands += [f'iClockOverride osc[{bit}] -period {period}ns',
                                      f'iClock osc[{bit}]', f'iRunLoop {cycles} -sck osc[{bit}]']
-                        expected += [f'iClockOverride osc({bit}) -period {period}ns',
+                        expected += [f'iClockOverride osc({bit}) -period {period} ns',
                                      f'iClock osc({bit})', f'iRunLoop {cycles} -sck osc({bit})']
                     started = time.monotonic()
                     output = self.replay(source, '; '.join(commands) + '\n')
