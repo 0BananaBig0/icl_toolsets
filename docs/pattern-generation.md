@@ -11653,5 +11653,12 @@ All22 leak-enabled sanitizer checks and six changed-code C++ checks pass,
 along with corpus, editor checks and source packaging. The final identity
 manifest binds4,125 inputs and44 executables. Full regression takes
 1,670.251 seconds; packaging takes54.778 seconds.
-Independent review and integration remain pending. Evidence:
+One independent review found0 Critical,1 Important and3 Minor findings. A single
+evidence-only repair pass fixes the Important finding: all18 ordinary controls
+now rehash their two input and five output files, all nine parent/current pairs
+match, and every matrix/control coordinate is required exactly once. Four
+negative controls reject altered bytes, divergent pairs and missing workloads;
+the real bundle passes. Source/product identities are unchanged, so the full
+qualification and recorded vendor runs are reused. Three Minors are deferred,
+bringing the total to41. Integration remains pending. Evidence:
 build/oscillator-default-restore-20261127/.

@@ -65,7 +65,7 @@ normalization is requested, produce {target,-period,declaredMagnitude,unit}.
 
 ## Branch completion
 
-- [ ] One fresh independent whole-branch review; grade every finding/declined
+- [x] One fresh independent whole-branch review; grade every finding/declined
   area, one Critical/Important test-first repair pass if necessary; defer Minors.
 - [ ] Merge into parent master, verify merged inputs/products and focused tests,
   push, detach reused worktree, safely delete only the task branch and archive
