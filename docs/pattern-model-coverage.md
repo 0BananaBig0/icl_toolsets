@@ -75,7 +75,7 @@ fixed; one Minor is deferred. Broader item10 is pending.
 | AccessLink/TAP | BSDL reader, IR/DR datapaths, FSM, child wiring and runtime metadata restored from flat ICL; explicit IR PDL reads/writes and ordered apply replay, with nine fresh SIB/reset directional certificates; multiple TAPs on equivalent root TCKs with per-IR metadata, aligned lanes, explicit reset connectivity and batched pin/clock snapshots; mixed IR/DR simultaneous groups across distinct TMS pins | General independent TAP state/clock phases, shared serial storage, implicit multi-TAP reset ownership and remaining corpus/reference qualification |
 | ScanInterface controls | Runtime explicit/implicit membership; single-TAP phase-qualified visible/hidden capture, shift and update events with concrete replay; standalone explicit/inferred clients drive bound phase/clock pins; complete-path proof or bounded hidden-event planning, indexed lanes, primary-enable preparation and concrete clock sampling covered | Shared-chain, serial-derived controls and general independently gated events |
 | Raw scans | Genuine opaque root-client lowering; multiple fixed declared-width opaque children on a complete scalar root route with private unknown capture and prior stable/default preparation; static modeled root and accessible hierarchical child intervals, disjoint setup queues, binary held-selector/SIB routes and local stable proof; serial aliases/inversion, typed root controls, explicit reset, native CSU replay, TCK waits, default-chain spelling and partial-X controlling fill; bounded single-stream ScanRegister reservations and explicit root port effects with retained locks; ordinary preparation before root or child raw replay in either source order and automatic parent setup for known modeled child-local routes; IR and complete ordered instrument/builtin DR on one bound scalar root TAP, including literal X input on canonical phase/reset profiles; Task166 supports serialized raw merge calls on existing modeled scalar/child, disjoint named-chain and bound single-TAP IR/DR routes | Broader opaque-child topology, shared/independent parallel and multi-TAP raw scans, opaque/history raw merges and raw interleaving, Tessent2026.2 literal-X export, TAP established port ownership and broader vendor qualification; compatible modeled-child port locks now use actual edge/final checks |
-| Serial/mixed scheduler | Shared parallel/scan frames, primary observations, register/mux/logic paths, SIB and bounded feedback reset prerequisites, read obligations, register/primary/computed-port AccessTogether groups, forwarded/logic/mux/one-hot port writes and partial/X writes; ScanRegister/DataRegister/primary-input iApplyEndState defaults, per-emitted-apply primary representation and final restoration; equivalent direct/inverted/forwarded observations and enabled alternatives on one path; simultaneous disjoint named client chains with aligned lanes/common events; independently selected clients (SelectPort or ShiftEn-only) and named-chain groups share hardware state, including reset-before-capture and transient reset history | Independent TAP phases, overlapping intermediate taps and broader access models |
+| Serial/mixed scheduler | Shared parallel/scan frames, primary observations, register/mux/logic paths, SIB and bounded feedback reset prerequisites, read obligations, register/primary/computed-port AccessTogether groups, forwarded/logic/mux/one-hot port writes and partial/X writes; ScanRegister/DataRegister/primary-input iApplyEndState defaults, per-emitted-apply primary representation and final restoration; equivalent direct/inverted/forwarded observations and enabled alternatives on one path; simultaneous disjoint named client chains with aligned lanes/common events; independently selected clients (SelectPort or ShiftEn-only) and named-chain groups share hardware state, including reset-before-capture and transient reset history | General independent TAP state/clock phases beyond the qualified mixed IR/DR case, overlapping intermediate taps and broader access models |
 | Idle cycles | Literal TCK counts on standalone clients or reset common-phase TAPs; per-edge state/reset/fill replay, reservation rollback, fixed-point acceleration and retained output count; one forward TCK vendor fixture; checked relative system-clock waits on clock-only routes including direct declared differential partners, ordered muxes, exact fixed-ratio scaling, versioned overrides, typed Period oscillator roots, explicitly bound differential inputs with a common modeled phase origin and root-relative replay; named secondary sources on negative clock inputs with six matching source/normalized vendor exports; typed ToClockPort encodings for internal clock inputs with legacy loading and four fresh mapped direct/alias flat traces; metadata-gated physical clock names for native flat iClock/waits and four raw export replays; minimum -time waits with exact literal preservation on models without storage, opaque hardware, clock-driven data or forwarded test clocks | General implicit selection, inverted child clock phases, general intrinsic oscillator restoration/frequency, general vendor-flat output-source networks, general physical/native naming collisions, raw data/override names and negative vendor iClock targets, general bound differential phase relationships, general stateful absolute-time waits, general clock events and external time-dependent instrument behavior |
 | Optimization | Dependency-guided and shared-address write batches; nested iMerge normalization with disjoint multi-apply ScanRegister/DataRegister read/write batching, including slices, aliases and X masks, plus connected/computed data/control-port accesses with bounded dependency ownership and serial fallback; independent tree/finite-state oracles, concrete replay and common-update constraints | Broader merge optimization, timing/resources, whole-program optimization and broader scale/vendor qualification; no global optimality claim |
 | Resource ownership | Bit-level register/all-port alias/slice and instance-member takes; applied-write/iState protection, inherited ownership and scoped release; Tessent default/persistent takes within the input stream; protected dependency batches, per-clock replay, explicit-reset ownership clearing and atomic failures | Clock/scan assignment and frequency commands, pattern-set lifecycle, broader scale and vendor qualification |
@@ -5664,7 +5664,7 @@ Broader original requirements and excluded1 remain open.
 
 ## Task188 independent TAP IR/DR phases
 
-Task188 qualification: full make check passes, including CLI/regression/fuzz/
+Task188 pre-review qualification: full make check passes, including CLI/regression/fuzz/
 LSP/grammar/Vim;215Python suite executions report3290tests, with5optional real
 ANTLR integrations skipped (ICL_REF_DIR unset). There are37successful check
 commands and15C++style checks. All15leak-enabled sanitizer native suites and
@@ -5689,5 +5689,35 @@ sanitizer10-method functional replay, help checks and source-package validation.
 The final manifest binds4091inputs and44selected executables. The model audit
 retains1334files/1763effective modules:1032canonical,44unsupported serialization
 forms and687default elaboration failures. No model/default acceptance is added.
-Final review and integration are pending;31inherited Minors, broader original
-requirements and excluded1remain open.
+The pre-review result is superseded by the post-review qualification below.
+31inherited Minors, broader original requirements and excluded1remain open.
+
+### Task188 post-review qualification
+
+Final review found0Critical/2Important/1Minor. One repair pass preserves the
+AccessTogether read alias when a reset-held DR emits no write, and prepares an
+unselected DR owner's instruction through a real common-phase scan before the
+mixed access. Planning snapshots only propose routes;concrete replay verifies
+the preparation and original goals before publishing state or observations.
+The three/four-TAP cases now require no manual setup. Both contradictory
+overview statements were corrected;no new Minor is deferred.
+
+Fresh post-fix full make check passes:215Python suites report3294tests, with the
+same5optional ANTLR skips. All33qualification commands pass, including15C++style
+checks,15leak-enabled sanitizer native suites,12new-phase functional methods and
+20existing non-scale multiple-TAP methods. Both normal/static14-method suites,
+source packaging and both corpus audits pass. The final manifests bind4091inputs
+and44selected executables.
+
+Three fresh paired7-point scale rounds pass63points/252CLI replays. Parent and
+candidate common-phase outputs remain byte-identical. Independent matrices take
+13.62-14.06s with362336KiB maximum runner/child-process-tree RSS;the slowest
+2TAP-by256bit point takes6.723s for four forms. These replace the pre-review
+measurements above;no unsupported-parent speedup is claimed.
+
+The earlier three parent-matched instrumented scale limits remain explicit;
+those large sanitizer cases are unqualified. This repair applies to mixed groups
+and preserves common-phase scheduling. The three pre-PDL vendor elaboration
+crashes still prevent new vendor equivalence. No resource limit is increased.
+Integration is pending;31inherited Minors, broader original requirements and
+excluded1 remain open.

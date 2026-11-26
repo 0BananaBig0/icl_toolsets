@@ -157,6 +157,33 @@ class IndependentTapPhases(unittest.TestCase):
         self.assertEqual(text, self.run_tool(self.root / 'reset.pdl', 'reset-replay.pdl'))
         self.assertEqual(text, self.run_tool(self.root / 'result.pdl', 'replay.pdl'))
 
+    def test_reset_held_mixed_alias_capture_retains_group(self):
+        source, models = helpers.network()
+        source = source.replace('InputPort reset = TRST1;', "InputPort reset = 1'b0;")
+        source = source.replace('Module MultiTapTop {',
+                                'Module MultiTapTop { Alias pair[10:0] = '
+                                'tap0.INSTRUCTION, c1.value {AccessTogether;}')
+        self.replay_source(source, models, 2,
+                           'iReset; iWrite tap1.INSTRUCTION 3; iApply; '
+                           'iRead pair 0; iApply;\n')
+        text = self.replay_source(source, models, 2,
+                                  'iPDLLevel 1; iReset; '
+                                  'iWrite tap1.INSTRUCTION 3; iApply; '
+                                  'iRead pair 0b0000xxxxxxx; iApply; '
+                                  'iNote [iGetReadData pair -bin]; '
+                                  'iNote [iGetStatus -clear]; iNote [iGetStatus];\n',
+                                  extra=('--model_readback',))
+        self.assertEqual([line[6:] for line in text.splitlines()
+                          if line.startswith('iNote ') and 'modeled ' not in line],
+                         ['0b0001xxxxxxx', '1', '0'])
+
+    def test_implicit_data_owner_setup_for_mixed_group(self):
+        for count in (3, 4):
+            with self.subTest(count=count):
+                self.replay('iReset; iWrite tap0.INSTRUCTION 3; '
+                            'iWrite c1.value 9; iApply -together;\n',
+                            widths=(4,) * count, ir_widths=(4,) * count)
+
     def test_same_tap_simultaneous_ir_and_dr_remains_rejected(self):
         source, models = helpers.network()
         pdl = self.prepare(source, models, 2,

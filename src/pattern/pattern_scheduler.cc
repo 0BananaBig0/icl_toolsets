@@ -6792,6 +6792,110 @@ class ScanScheduler::Impl {
     CheckScanConnectivity(required);
     const auto desired_preserved =
         DesiredPreserved(preserved, end_goals, explicit_writes, operations);
+    if (independent_instructions && !physical && !event_mode && allow_greedy &&
+        max_steps > 1) {
+      std::vector<Operation> preparation;
+      size_t work = 0;
+      for (const auto& [name, tap] : netlist_.taps) {
+        std::set<size_t> needed;
+        for (size_t id : required) {
+          const auto owner = register_taps_.find(id);
+          if (id != tap.instruction_register && owner != register_taps_.end() &&
+              owner->second == tap.instruction_register) {
+            needed.insert(id);
+          }
+        }
+        const auto ready = [&](const NetworkState& snapshot) {
+          std::set<size_t> active;
+          for (size_t root : roots_) {
+            try {
+              for (const auto& [id, inverted] :
+                   TraceSerialPath(snapshot, root, false).registers) {
+                active.insert(id);
+              }
+            } catch (const std::runtime_error&) {
+              // Other lanes can still need joint preparation.
+            }
+          }
+          return std::all_of(needed.begin(), needed.end(),
+                             [&](size_t id) { return active.count(id); });
+        };
+        const auto active = execution_->ActiveDataRegisters(name);
+        if (std::all_of(needed.begin(), needed.end(), [&](size_t id) {
+              const auto found = active.find(id);
+              return found != active.end() && found->second == '1';
+            })) {
+          continue;
+        }
+        bool found = false;
+        for (const auto& [instruction, output] : tap.scan_returns) {
+          for (const auto& code : tap.bsdl.opcodes.at(instruction)) {
+            work += netlist_.nodes.size();
+            if (work > 1048576) break;
+            if (code.find_first_not_of("01") != std::string::npos) continue;
+            NetworkState preview(state_);
+            for (const auto& [ir, owner] : instruction_registers_) {
+              preview.Drive(owner->ir_select, "0");
+            }
+            preview.SetRegister(tap.instruction_register,
+                                preview.Value(tap.instruction_register, true),
+                                code);
+            if (!ready(preview)) continue;
+            preparation.push_back(
+                {"iWrite",
+                 {netlist_.nodes[tap.instruction_register].name, "0b" + code},
+                 operations.front().origin,
+                 {}});
+            found = true;
+            break;
+          }
+          if (found || work > 1048576) break;
+        }
+        if (!found) {
+          preparation.clear();
+          break;
+        }
+      }
+      if (!preparation.empty()) {
+        Impl trial(*this);
+        std::vector<std::pair<std::vector<BitReference>, std::string>>
+            observations;
+        PioObservation collect;
+        if (observe) {
+          collect = [&](const auto& bits, const auto& values) {
+            observations.emplace_back(bits, values);
+          };
+        }
+        std::optional<std::vector<ScanStep>> prepared;
+        try {
+          // Replay a real common-phase IR preparation before the mixed access.
+          auto steps = trial.Solve(preparation, false, 1, {}, false, preserved,
+                                   false, true);
+          auto requests = operations;
+          for (const auto& [id, goal] : goals) {
+            requests.push_back({"iWrite",
+                                {netlist_.nodes[id].name, "0b" + goal},
+                                operations.front().origin,
+                                {}});
+          }
+          auto final = trial.Solve(
+              requests, together, max_steps - 1, fixed_loads, false, preserved,
+              explicit_writes, true, permitted_tap_data, physical, collect);
+          steps.insert(steps.end(), std::make_move_iterator(final.begin()),
+                       std::make_move_iterator(final.end()));
+          prepared = std::move(steps);
+        } catch (const std::runtime_error&) {
+          // A route candidate is only a hint; retain the joint solver fallback.
+        }
+        if (prepared) {
+          state_.Restore(trial.state_);
+          fill_ = std::move(trial.fill_);
+          execution_ = std::move(trial.execution_);
+          for (const auto& [bits, values] : observations) observe(bits, values);
+          return std::move(*prepared);
+        }
+      }
+    }
     if (physical) {
       const bool ungrouped = std::all_of(
           groups.begin(), groups.end(),
@@ -7510,6 +7614,24 @@ class ScanScheduler::Impl {
             // Preserve the verified update grouping after alias names are
             // inlined.
             step.together = step.together || !group.read;
+            if (group.read && independent_instructions) {
+              const auto& alias = netlist_.nodes[key.first];
+              const auto target = ResolvePdlTarget(netlist_, alias.name);
+              std::string comparison;
+              for (const auto& bit : target.bits) {
+                const auto& node = netlist_.nodes[bit.node];
+                const auto found = step.expected.find(node.name);
+                char value = found == step.expected.end()
+                                 ? 'x'
+                                 : found->second.at(Offset(node, bit.index));
+                if (bit.inverted && value != 'x') {
+                  value = value == '0' ? '1' : '0';
+                }
+                comparison += value;
+              }
+              // Writes alone cannot group a read member held in reset.
+              step.expected.emplace(alias.name, comparison);
+            }
             simultaneous_replayed[group_index] = true;
           }
           ++group_index;

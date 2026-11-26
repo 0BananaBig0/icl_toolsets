@@ -51,11 +51,11 @@ existing Apply/Cycle/Replay entry points and generated PDL remain compatible.
 - [x] Step5: Reconcile current guidance and open inventory;read finalized diff,
   commit and run completion contract. Expected: evidence matches changed scope.
 
-Implementation verification: python3 /tmp/independent-tap-phases-check.py
+Implementation verification: python3 /tmp/independent-tap-phases-postreview-check.py
 
 ## Branch review and integration
 
-- [ ] Obtain one final review;grade every finding/declined area;fix blockers once.
+- [x] Obtain one final review;grade every finding/declined area;fix blockers once.
 - [ ] Merge,check merged result,push,detach/delete owned branch,archive own ledger.
 
 Self-review: one scheduler change with its consumers and proof. Model metadata

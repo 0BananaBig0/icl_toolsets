@@ -576,7 +576,8 @@ path proves complete-scan equivalence; bounded event planning also tracks hidden
 capture/shift/update storage when that proof does not hold. Unbound vector control lanes retain
 their state, and parallel input frames do not pulse scan controls.
 It rejects
-independent TAP phases, shared serial storage, overlapping paths within a selected chain group, intermediate serial taps,
+general independent TAP state/clock phases beyond the qualified mixed IR/DR case,
+shared serial storage, overlapping paths within a selected chain group, intermediate serial taps,
 general serial- or phase-dependent reset events,
 stateful absolute-time waits, unsupported reservation types and other unsupported
 operations. Transactions needing general independently gated
@@ -11291,7 +11292,7 @@ control. Those probes do not establish vendor equivalence for this extension.
 
 ## Task188 independent TAP IR/DR phases
 
-Task188 qualification: full make check passes, including CLI/regression/fuzz/
+Task188 pre-review qualification: full make check passes, including CLI/regression/fuzz/
 LSP/grammar/Vim;215Python suite executions report3290tests, with5optional real
 ANTLR integrations skipped (ICL_REF_DIR unset). There are37successful check
 commands and15C++style checks. All15leak-enabled sanitizer native suites and
@@ -11316,5 +11317,35 @@ sanitizer10-method functional replay, help checks and source-package validation.
 The final manifest binds4091inputs and44selected executables. The model audit
 retains1334files/1763effective modules:1032canonical,44unsupported serialization
 forms and687default elaboration failures. No model/default acceptance is added.
-Final review and integration are pending;31inherited Minors, broader original
-requirements and excluded1remain open.
+The pre-review result is superseded by the post-review qualification below.
+31inherited Minors, broader original requirements and excluded1remain open.
+
+### Task188 post-review qualification
+
+Final review found0Critical/2Important/1Minor. One repair pass preserves the
+AccessTogether read alias when a reset-held DR emits no write, and prepares an
+unselected DR owner's instruction through a real common-phase scan before the
+mixed access. Planning snapshots only propose routes;concrete replay verifies
+the preparation and original goals before publishing state or observations.
+The three/four-TAP cases now require no manual setup. Both contradictory
+overview statements were corrected;no new Minor is deferred.
+
+Fresh post-fix full make check passes:215Python suites report3294tests, with the
+same5optional ANTLR skips. All33qualification commands pass, including15C++style
+checks,15leak-enabled sanitizer native suites,12new-phase functional methods and
+20existing non-scale multiple-TAP methods. Both normal/static14-method suites,
+source packaging and both corpus audits pass. The final manifests bind4091inputs
+and44selected executables.
+
+Three fresh paired7-point scale rounds pass63points/252CLI replays. Parent and
+candidate common-phase outputs remain byte-identical. Independent matrices take
+13.62-14.06s with362336KiB maximum runner/child-process-tree RSS;the slowest
+2TAP-by256bit point takes6.723s for four forms. These replace the pre-review
+measurements above;no unsupported-parent speedup is claimed.
+
+The earlier three parent-matched instrumented scale limits remain explicit;
+those large sanitizer cases are unqualified. This repair applies to mixed groups
+and preserves common-phase scheduling. The three pre-PDL vendor elaboration
+crashes still prevent new vendor equivalence. No resource limit is increased.
+Integration is pending;31inherited Minors, broader original requirements and
+excluded1 remain open.
