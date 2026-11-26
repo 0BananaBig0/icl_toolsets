@@ -61,7 +61,7 @@ for that bounded class; all other models retain their existing paths.
 - [x] Step5: Read selected patch, commit and get one fresh final review. Grade
   every finding/declined area; repair blockers once RED→GREEN/full suite, defer
   Minors. Expected: no unresolved Critical/Important, no rereview.
-- [ ] Step6: Merge/push to master, verify merged checks, detach reused tree,
+- [x] Step6: Merge/push to master, verify merged checks, detach reused tree,
   delete only owned branch and archive own ledger. Expected: clean pushed master,
  117stashes and bounded original-inventory claim.
 
