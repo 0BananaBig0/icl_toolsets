@@ -5209,8 +5209,10 @@ hardware operation or failure count is injected. Existing modeled dynamic
 controls now use their native notes, with obsolete manual injection removed.
 
 An initial measurement attempt correctly failed all216rows because the shared
-validator expected zero comparison masks. The workload's real masks are uncared
-X. The runner now consumes the fixture's expected history word; no output or
+validator expected zero child SO expectation words in history annotations.
+This workload's child SO expectations contain uncared X; returned miscompare
+masks are zero because those unknown child bits are uncared. The runner now
+checks the fixture's expected SO word in each annotation; no observed output or
 bound was relaxed. The failed rows remain recorded, and final gates were run
 fresh after the correction.
 
@@ -5617,3 +5619,22 @@ Original broader items and excluded1 remain open. Merge/integration is next.
 All41 Task185 merged-result checks pass against identical4,090qualified inputs
 and23copied executables. Master is pushed, the owned task branch is deleted,
 and117stashes remain. Broader inventory work remains open.
+
+## Deferred documentation corrections (Task186)
+
+Six inherited documentation findings are addressed: the raw-merge history guard
+from Task167, control/RSS labels from Task169, old read-callback usage statements
+from Task170, shared benchmark help from Task178, SO/miscompare terminology from
+Task179, and the ReplayPrimary planning precondition from Task185. Historical
+measurement values and checkpoint review counts retain their original meaning.
+The candidate deferred ledger is37minus6=31; final independent review is pending.
+
+Both affected C++ headers preprocess identically before and after these comment
+corrections. The shared benchmark AST is identical after excluding its module
+docstring. Its three help outputs retain identical options and use an accurate
+shared description. Three existing native executable hashes remain unchanged.
+Eleven focused checks pass: native primary replay, four CLI suites, three
+reporting suites, whitespace and two changed-header formatting checks.
+The full behavioral regression is not repeated for these documentation-only
+changes. Physical/timed/topology restrictions, resource limits, broader original
+requirements and excluded1 remain unchanged.

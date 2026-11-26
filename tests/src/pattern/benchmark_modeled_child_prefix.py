@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static modeled child request identities and measured live-history replay."""
+"""Measure child requests and live-history replay against parent controls."""
 def model(children=1, width=8, inverted=False):
     leaf = """Module Leaf {
  ScanInPort si; SelectPort sel; CaptureEnPort ce; ShiftEnPort se;

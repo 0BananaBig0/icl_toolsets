@@ -79,6 +79,8 @@ class ScanScheduler {
       const std::map<size_t, std::string>& caller_goals = {});
   // Execute planned primary frames on actual state, validating actual routes.
   // DataRegister goal markers do not drive or assume storage.
+  // Read steps require Apply with a nonempty observation callback to record
+  // route metadata, even when its planned observation values are discarded.
   void ReplayPrimary(const std::vector<Operation>& operations,
                      const std::vector<ScanStep>& steps,
                      const std::map<size_t, std::string>& preserved = {},
