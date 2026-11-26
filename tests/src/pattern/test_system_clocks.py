@@ -1177,11 +1177,10 @@ Module Top { ClockPort root; Instance child Of Osc; }'''
 Module Top { ClockPort root; Instance child Of Osc;
   ToClockPort out { Source child.osc; }
 }'''
-        for options in ('', '-freqMultiplier 2', '-freqDivider 3'):
+        for options in ('-freqMultiplier 2', '-freqDivider 3'):
             with self.subTest(options=options):
-                check = 'iClock child.osc\n' if options else ''
-                diagnostic = ('inactive system-clock path' if options else
-                              'oscillator override requires explicit -source')
+                check = 'iClock child.osc\n'
+                diagnostic = 'inactive system-clock path'
                 self.rejected(source, f'iClockOverride child.osc {options}\n' + check,
                               diagnostic)
                 self.rejected(source, 'iClockOverride child.osc -source root\n'
@@ -1190,6 +1189,24 @@ Module Top { ClockPort root; Instance child Of Osc;
             with self.subTest(replacement=replacement):
                 self.rejected(source, f'iClock child.osc; iClockOverride child.osc -source {replacement}\n',
                               'cyclic')
+
+
+    def test_empty_override_restores_intrinsic_oscillator(self):
+        source = '''Module Osc {ToClockPort osc {Period 10ps;}}
+Module Top {ClockPort root; Instance child Of Osc;
+ ToClockPort out {Source child.osc; FreqDivider 2;}}'''
+        output = self.replay(source, '''iClock out; iRunLoop 3 -sck out
+iClockOverride child.osc -source root -freqMultiplier 3 -freqDivider 2
+iClock out; iRunLoop 6 -sck out
+iClockOverride child.osc
+iRunLoop 6 -sck out; iClock out; iRunLoop 6 -sck out
+''')
+        self.assertEqual([line for line in output.splitlines()
+                          if line.startswith(('iClock ', 'iRunLoop '))], [
+            'iClock child.osc', 'iRunLoop 6 -sck child.osc',
+            'iClock root', 'iRunLoop 8 -sck root', 'iRunLoop 8 -sck root',
+            'iClock child.osc', 'iRunLoop 12 -sck child.osc'])
+        self.assertNotIn('iClockOverride', output)
 
 
 if __name__ == '__main__':

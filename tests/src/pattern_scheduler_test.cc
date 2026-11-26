@@ -3928,11 +3928,16 @@ void TestClockPeriodOverrideSnapshots() {
     ClockPort ck;
     ToClockPort osc {Source ck; FreqMultiplier 3; FreqDivider 2;}
   }
+  Module IntrinsicOscillator {ToClockPort clock[5:4] {Period 10ps;}}
   Module Top {
     ClockPort root;
     DataInPort mode;
     ClockMux choose SelectedBy mode {1'b0:root;1'b1:root;}
     ToClockPort dynamic {Source choose; FreqMultiplier 3; FreqDivider 2;}
+    Instance intrinsic Of IntrinsicOscillator;
+    ToClockPort unconfigured;
+    ToClockPort restoreSlow {Source intrinsic.clock[5]; FreqDivider 2;}
+    ToClockPort restoreFast {Source intrinsic.clock[5]; FreqMultiplier 3;}
     Instance pll Of Pll {InputPort ck=root;}
     ToClockPort slow {Source pll.osc; FreqDivider 2;}
     ToClockPort fast {Source pll.osc; FreqMultiplier 3;}
@@ -4050,6 +4055,56 @@ void TestClockPeriodOverrideSnapshots() {
                                         "-freqMultiplier", "3", "-freqDivider",
                                         "2"}),
           "explicit source recovers after rejected default-source expansion");
+  clocks.Override({"iClockOverride",
+                   {"intrinsic.clock(5)", "-source", "root", "-freqMultiplier",
+                    "3", "-freqDivider", "2"},
+                   "restore:1",
+                   {}},
+                  context);
+  Require(clocks.Check("restoreSlow", scheduler) == "root" &&
+              clocks.Wait("restoreSlow", 6, scheduler).second == 8,
+          "oscillator source replacement checks the actual derived ratio");
+  auto before_restore = clocks;
+  clocks.Override({"iClockOverride",
+                   {"intrinsic.clock(5)", "-period", "20ns"},
+                   "restore:2",
+                   {}},
+                  context);
+  clocks.Override({"iClockOverride", {"intrinsic.clock(5)"}, "restore:3", {}},
+                  context, &normalized);
+  Require(normalized.arguments ==
+                  std::vector<std::string>(
+                      {"intrinsic.clock(5)", "-period", "10", "ps"}) &&
+              clocks.Wait("restoreSlow", 6, scheduler) ==
+                  std::make_pair(std::string("root"), uint64_t{8}) &&
+              clocks.Check("restoreFast", scheduler) == "intrinsic.clock(5)" &&
+              clocks.Wait("restoreFast", 6, scheduler).second == 2 &&
+              clocks.Check("intrinsic.clock(4)", scheduler) ==
+                  "intrinsic.clock(4)" &&
+              clocks.Wait("intrinsic.clock(4)", 6, scheduler).second == 6 &&
+              before_restore.Check("restoreFast", scheduler) == "root" &&
+              before_restore.Wait("restoreFast", 9, scheduler).second == 2,
+          "restoration uses the declared period without changing old checks, "
+          "copies or neighboring vector bits");
+  clocks.Override(
+      {"iClockOverride", {"unconfigured", "-period", "25ns"}, "restore:4", {}},
+      context);
+  clocks.Check("unconfigured", scheduler);
+  normalized.arguments = {"sentinel"};
+  rejected = false;
+  try {
+    clocks.Override({"iClockOverride", {"unconfigured"}, "restore:5", {}},
+                    context, &normalized);
+  } catch (const std::runtime_error& error) {
+    rejected = std::string(error.what()).find("source") != std::string::npos;
+  }
+  Require(rejected &&
+              normalized.arguments == std::vector<std::string>({"sentinel"}) &&
+              clocks.Check("unconfigured", scheduler) == "unconfigured" &&
+              clocks.Wait("unconfigured", 6, scheduler).second == 6 &&
+              scheduler.Value("value") == "1010",
+          "missing intrinsic period rejects restoration without publishing "
+          "output, definitions or hardware state");
 }
 void TestClockOverrideScale() {
   std::string source =

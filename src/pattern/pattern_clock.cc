@@ -142,9 +142,14 @@ void SystemClocks::Override(const Operation& operation, z3::context& context,
     definition.source = source->second.at(Offset(node, target.second));
   }
   std::set<std::string> options;
-  if (period) {
-    const auto value = pdl::NormalizeClockPeriod(
-        args[2], args.size() == 4 ? std::make_optional(args[3]) : std::nullopt);
+  const bool restore = args.size() == 1 && node.clock_period;
+  if (period || restore) {
+    const auto value =
+        restore ? std::to_string(node.clock_period->magnitude) +
+                      node.clock_period->unit
+                : pdl::NormalizeClockPeriod(
+                      args[2], args.size() == 4 ? std::make_optional(args[3])
+                                                : std::nullopt);
     definition.oscillator = true;
     definition.multiplier = definition.divider = 1;
     if (normalized) {
@@ -181,9 +186,6 @@ void SystemClocks::Override(const Operation& operation, z3::context& context,
       }
     }
     // Factor-only updates may leave only an earlier checked oscillator usable.
-    if (node.clock_period && options.empty()) {
-      throw std::runtime_error("oscillator override requires explicit -source");
-    }
     if (!node.clock_period && source == node.inputs.end() &&
         !options.count("-source")) {
       throw std::runtime_error("clock override requires a source");
