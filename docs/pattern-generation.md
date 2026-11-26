@@ -11546,7 +11546,9 @@ For example, a port declared with source `root` and factors 3/2 emits
 `-source root -freqMultiplier 3 -freqDivider 5` for a divider-only override to 5.
 This explicit output avoids the v2023.4 vendor dialect's different omitted-field
 rules. A default mux, alias, inverted or missing source still requires an explicit
-representable source; source-free oscillator forms remain guarded. Ordinary
+representable source. An empty override on a declared Period oscillator restores
+its ICL period; factor-only oscillator forms still require a representable source
+when retaining clock programs. Ordinary
 programs without period overrides keep their existing normalization and omission
 rules. No elapsed-time engine or physical clock event is inferred from metadata.
 
@@ -11607,3 +11609,56 @@ current binary and trace identities. One review repair pass resolves both
 Important findings; one Minor is deferred. Task195 is merged and pushed to
 master as a31e1e8; all nine merged-result checks pass and the task branch is
 deleted, with 117 stashes preserved.
+
+### Declared oscillator restoration (Task196)
+
+For a ToClockPort declared with an ICL Period, an empty native override restores
+that declared oscillator after source/ratio or explicit-period replacement:
+
+    # ICL in the child module declares: ToClockPort osc {Period 10ps;}
+    iClockOverride child.osc -period 20 ns
+    iClockOverride child.osc
+    iClock child.osc
+    iRunLoop 3 -sck child.osc
+
+The canonical main PDL emits the restoration as
+`iClockOverride child.osc -period 10 ps`. Earlier checked targets retain their
+prior definition until checked again. Other vector bits and original ICL period
+metadata stay independent. Programs without an explicit period operation keep
+the existing root-relative lowering; a restored intrinsic oscillator becomes
+the original root again.
+
+This is the native interpretation of IEEE1687-2014 sections6.4.6.20 and7.9.15–16
+(printed103–104,174–175/PDF117–118,188–189). Explicit `-period` output uses the
+existing vendor extension. Vendor references explicitly state the declared
+period; raw vendor empty-command omission behavior is not qualified.
+
+The 19 period methods pass on both generator variants, along with73 ordinary
+clock methods and native snapshot assertions. Three rounds of the nine
+restoration workloads and18 matched parent/current ordinary controls pass:
+45 points,225 CLI processes and three Python runners. A restoration point has
+8/128/1024 replacement/restoration pairs across2/8/32 declared oscillator bits,
+plus one initial period override. The maximum point takes0.530 seconds and
+76,272 KiB runner/child RSS, within10seconds/512MiB. Captured input/output bytes
+and repeat hashes agree; ordinary parent/current outputs are identical. Capture
+I/O and concurrent qualification are included, so no isolated speedup is claimed.
+Six fresh sequential Tessent2026.2 jobs pass with three byte-identical
+explicit-period reference/generated exports and literal expected relative
+traces. Fifteen native producer runs cover all five replay forms. These are
+configured original-model comparisons; exports omit period metadata and do not
+establish standalone replay, raw vendor omission behavior or physical timing.
+All39 final qualification commands pass: 227 Python
+suite runs report3,494 tests with five optional ANTLR skips.
+All22 leak-enabled sanitizer checks and six changed-code C++ checks pass,
+along with corpus, editor checks and source packaging. The final identity
+manifest binds4,125 inputs and44 executables. Full regression takes
+1,670.251 seconds; packaging takes54.778 seconds.
+One independent review found0 Critical,1 Important and3 Minor findings. A single
+evidence-only repair pass fixes the Important finding: all18 ordinary controls
+now rehash their two input and five output files, all nine parent/current pairs
+match, and every matrix/control coordinate is required exactly once. Four
+negative controls reject altered bytes, divergent pairs and missing workloads;
+the real bundle passes. Source/product identities are unchanged, so the full
+qualification and recorded vendor runs are reused. Three Minors are deferred,
+bringing the total to41. Integration remains pending. Evidence:
+build/oscillator-default-restore-20261127/.
