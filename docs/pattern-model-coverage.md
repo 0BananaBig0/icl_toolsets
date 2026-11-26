@@ -5653,3 +5653,11 @@ native executables remain unchanged. No new tests mirror prose, no full
 behavioral requalification is claimed, and no rereview is requested.
 All six inherited documentation findings are resolved;31other inherited Minors,
 broader original requirements and excluded1 remain open. Integration is next.
+
+The documentation batch is merged as16e5aab and pushed. Seven merged checks
+pass: three help entry points, native primary replay, read-callback histories,
+raw-merge histories and the dynamic-child reporter. Both header token streams,
+Python logic and the three native binaries retain their qualified identities.
+The owned task branch is deleted;the reused worktree is detached;117stashes
+are preserved. Six inherited findings are resolved and31remain deferred.
+Broader original requirements and excluded1 remain open.
