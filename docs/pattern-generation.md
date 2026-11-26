@@ -11490,3 +11490,10 @@ input/output provenance are retained. Original-source schedules need not be
 identical; the queued-state source still has unsupported pending-iState commands.
 
 See [Task190 qualification and limits](remaining-work.md#task190-ordinary-logical-read-scope).
+
+Task190 is merged as 99dc8aa and pushed. All twelve merged checks
+pass on identical4121qualified inputs and nine copied executable hashes, covering
+native state/readback,both CLI variants,all77directional certificates and corpus
+audit. The owned branch is deleted;the reused worktree is detached;117stashes
+are preserved. No Critical or Important review finding remains unresolved.
+31deferred Minors,broader original requirements and excluded1 remain open.

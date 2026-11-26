@@ -5779,3 +5779,10 @@ native state/readback and both CLI variants plus the corpus audit. The owned
 task branch is deleted;the reused worktree is detached;117stashes are preserved.
 The Critical and both Important review findings are resolved;
 31inherited Minors, broader original requirements and excluded1 remain open.
+
+Task190 is merged as 99dc8aa and pushed. All twelve merged checks
+pass on identical4121qualified inputs and nine copied executable hashes, covering
+native state/readback,both CLI variants,all77directional certificates and corpus
+audit. The owned branch is deleted;the reused worktree is detached;117stashes
+are preserved. No Critical or Important review finding remains unresolved.
+31deferred Minors,broader original requirements and excluded1 remain open.

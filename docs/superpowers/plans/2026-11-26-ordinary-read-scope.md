@@ -82,7 +82,7 @@ Implementation verification: python3 /tmp/ordinary-read-scope-postreview-check.p
 ## Branch review and integration
 
 - [x] Obtain one fresh final review;grade every finding/declined area;fix blockers once.
-- [ ] Merge,verify merged result,push,detach/delete owned branch,archive own ledger.
+- [x] Merge,verify merged result,push,detach/delete owned branch,archive own ledger.
 
 Self-review:one read-lowering deliverable with shared helper and affected
 consumers;native physical behavior stays distinct from logical history output.
