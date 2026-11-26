@@ -8411,19 +8411,27 @@ share the existing 128-level procedure budget. Reset recovery closes unwound
 merge boundaries in the internal operation stream, preserving completed work
 while reset discards the unfinished queue.
 
-Caller Apply groups must contain only callback requests. Mixed callback/ordinary
-or raw groups, aliases spanning both kinds, AccessTogether callback aliases and
--together reject before invocation. For callbacks in valid merge calls, see
-[serial callback merge execution](#callbacks-within-merge-calls). Logical callback storage
-cannot be taken or released, including by a whole-instance reservation; ordinary
-endpoint resource checks still apply. Automatic callbacks needed while solving
-downstream access goals remain open.
+Caller Apply groups may combine ordinary and callback requests under the
+[mixed caller rules](#mixed-ordinary-and-callback-caller-groups); aliases spanning
+both kinds follow the [mixed-alias rules](#mixed-ordinary-and-callback-alias-bits).
+AccessTogether or `iApply -together` groups containing logical callback members,
+and queued raw groups containing callback requests, retain their guards.
+For callbacks in valid merge calls, see
+[serial callback merge execution](#callbacks-within-merge-calls). Logical callback
+storage cannot be taken or released, including by a whole-instance reservation;
+ordinary endpoint resource checks still apply. Automatic downstream invocation
+has its documented bounded support, including
+[primary observations](#automatic-primary-callback-observations-task185);
+broader control and serial dependencies remain open.
 
---model_readback supports actual ordinary endpoint observations during explicit
-write callbacks, as described below. Invoked read callbacks and --physical_pdl
-callbacks still reject before artifact publication. Reset-canceled requests remain
-valid. Native applications can supply actual readback providers; no hardware
-transport is certified by modeled execution.
+`--model_readback` supports actual ordinary endpoint observations during explicit
+write and actually invoked read callbacks, as described in the
+[read-callback scope](#actual-endpoints-of-invoked-read-callbacks-task170).
+Logical callback arguments and postconditions are not observed device data.
+Physical callback output remains unsupported, and timed histories retain their
+documented guards. Reset-canceled requests remain valid. Native applications
+can supply actual readback providers; no hardware transport is certified by
+modeled execution.
 
 --debug preserves callback declarations and original module scopes in flat ICL.
 Generated PDL contains endpoint operations and declared write postconditions.
@@ -9336,15 +9344,17 @@ read keeps its prior history, and outer completion does not invalidate a read
 already completed by an inner Apply. Native/model execution failures retain the
 existing fail-closed observation rules.
 
-The ordinary request can use an ordinary-only alias, and callbacks can use
-callback-only aliases, masks, namespace/prefix and split inputs. One alias
-combining ordinary and callback bits remains unsupported, as do automatic
-downstream invocation,
-iApply -together, mixed raw caller requests, physical callback output and actual
-invoked ReadCallBack histories. ReadCallBack generation keeps its previous
-non-model behavior. Existing ordinary endpoint merges within a callback body
-retain their normal pending-queue rules. Unsupported or conflicting programs
-preserve previously published output/debug/reset artifacts on failure.
+Ordinary and callback requests support their ordinary-only, callback-only and
+[mixed aliases](#mixed-ordinary-and-callback-alias-bits), with masks,
+namespace/prefix and split inputs. Actually invoked ReadCallBack bodies may
+expose ordinary endpoint histories in modeled mode; this does not turn logical
+callback arguments into observed storage. Automatic downstream invocation has
+its [bounded primary observation scope](#automatic-primary-callback-observations-task185).
+`iApply -together` requests containing logical callbacks, mixed raw caller
+requests and physical callback output retain their restrictions. Existing
+ordinary endpoint merges within a callback body retain their pending-queue
+rules. Unsupported or conflicting programs preserve previously published
+output/debug/reset artifacts on failure.
 
 The benchmark command is:
 
@@ -9686,8 +9696,12 @@ used to recover while the merge remains active. Caller resource reservations,
 callback preflight and -together/AccessTogether/raw-group restrictions remain.
 Task167 supports modeled merge histories on existing native logical routes;
 provider requests serialize merge calls to preserve source-time observations.
-Read-callback/automatic history and physical callback-output guards remain.
-These restrictions do not prevent ordinary expanded replay.
+Actually invoked read callbacks may expose ordinary endpoint histories in
+modeled merge calls. Automatic primary histories follow their
+[bounded scope](#automatic-primary-callback-observations-task185); broader
+control/serial automatic histories and timed histories retain their guards.
+Physical callback output remains unsupported. These restrictions do not
+prevent ordinary expanded replay.
 
 Task164 passes 64 final qualification gates: 15 normal and 15 leak-enabled
 sanitizer native suites, 74 suites and 1,208 methods in each generator
@@ -9777,8 +9791,10 @@ Modeled merge histories are supported on the qualified native routes; see
 [child](#serial-opaque-child-merge-calls-task182) and
 [root](#standalone-opaque-root-serial-merges-task183) serial merges also retain
 actual histories, with opaque return data unknown. Broader multi-TAP/shared raw
-topologies and physical merged histories retain their restrictions. Enabling
-`--model_readback` adds software observations, without establishing device/vendor
+topologies and physical merged histories retain their restrictions.
+With `--physical_pdl`, `iMerge` itself is unsupported, including raw programs
+without a history getter. Enabling `--model_readback` adds software observations,
+without establishing device/vendor
 equivalence or physical timing closure.
 
 Reproduce the matched measurements with a retained parent binary:
@@ -11204,3 +11220,18 @@ reporting suites, whitespace and two changed-header formatting checks.
 The full behavioral regression is not repeated for these documentation-only
 changes. Physical/timed/topology restrictions, resource limits, broader original
 requirements and excluded1 remain unchanged.
+
+The one final review found0Critical/2Important/0Minor on5b71a68. Both Important
+documentation findings are corrected in one pass: earlier current-use sections
+now describe supported read-callback/mixed-alias histories, and raw-merge usage
+explicitly retains the physical-output rejection even without a history getter.
+The remaining read-callback restriction is explicitly dated to its historical
+checkpoint. Physical, timed and logical-storage limits remain stated.
+
+Three targeted existing capability checks pass for merged read callbacks, actual
+mixed-alias observations and getter-free physical merge rejection. Together with
+the original11checks,14checks pass; C++ tokens, benchmark logic and all three
+native executables remain unchanged. No new tests mirror prose, no full
+behavioral requalification is claimed, and no rereview is requested.
+All six inherited documentation findings are resolved;31other inherited Minors,
+broader original requirements and excluded1 remain open. Integration is next.

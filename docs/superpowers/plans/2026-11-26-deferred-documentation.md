@@ -44,7 +44,7 @@ Implementation verification: python3 /tmp/deferred-documentation-check.py
 
 ## Branch review and integration
 
-- [ ] Step4: Commit grouped diff and obtain one fresh final review. Grade every
+- [x] Step4: Commit grouped diff and obtain one fresh final review. Grade every
   finding/declined area; repair blockers once and defer new Minors.
   Expected: no unresolved Critical/Important; exact deferred-count reconciliation.
 - [ ] Step5: Merge/push, run merged checks, detach reused tree, delete owned

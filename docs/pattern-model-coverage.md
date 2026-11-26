@@ -5638,3 +5638,18 @@ reporting suites, whitespace and two changed-header formatting checks.
 The full behavioral regression is not repeated for these documentation-only
 changes. Physical/timed/topology restrictions, resource limits, broader original
 requirements and excluded1 remain unchanged.
+
+The one final review found0Critical/2Important/0Minor on5b71a68. Both Important
+documentation findings are corrected in one pass: earlier current-use sections
+now describe supported read-callback/mixed-alias histories, and raw-merge usage
+explicitly retains the physical-output rejection even without a history getter.
+The remaining read-callback restriction is explicitly dated to its historical
+checkpoint. Physical, timed and logical-storage limits remain stated.
+
+Three targeted existing capability checks pass for merged read callbacks, actual
+mixed-alias observations and getter-free physical merge rejection. Together with
+the original11checks,14checks pass; C++ tokens, benchmark logic and all three
+native executables remain unchanged. No new tests mirror prose, no full
+behavioral requalification is claimed, and no rereview is requested.
+All six inherited documentation findings are resolved;31other inherited Minors,
+broader original requirements and excluded1 remain open. Integration is next.
