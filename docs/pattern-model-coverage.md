@@ -5721,3 +5721,10 @@ and preserves common-phase scheduling. The three pre-PDL vendor elaboration
 crashes still prevent new vendor equivalence. No resource limit is increased.
 Integration is pending;31inherited Minors, broader original requirements and
 excluded1 remain open.
+
+Task188 is merged as 9dc350b and pushed. All eleven merged checks
+pass on identical4091qualified inputs and nine copied executable hashes, covering
+native state/readback and both CLI variants plus the corpus audit. The owned
+task branch is deleted;the reused worktree is detached;117stashes are preserved.
+Both Important review findings and the Minor wording issue are resolved;
+31inherited Minors, broader original requirements and excluded1 remain open.

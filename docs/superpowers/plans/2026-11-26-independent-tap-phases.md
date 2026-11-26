@@ -56,7 +56,7 @@ Implementation verification: python3 /tmp/independent-tap-phases-postreview-chec
 ## Branch review and integration
 
 - [x] Obtain one final review;grade every finding/declined area;fix blockers once.
-- [ ] Merge,check merged result,push,detach/delete owned branch,archive own ledger.
+- [x] Merge,check merged result,push,detach/delete owned branch,archive own ledger.
 
 Self-review: one scheduler change with its consumers and proof. Model metadata
 must not become an assumed hardware state. Wider original item2 remains open.
