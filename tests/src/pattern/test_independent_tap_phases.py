@@ -1,0 +1,185 @@
+#!/usr/bin/env python3
+"""Different TAP instruction/data phases retain a shared update cycle."""
+import unittest
+import time
+import hashlib
+import json
+
+import test_multiple_tap_scheduling as helpers
+
+
+class IndependentTapPhases(unittest.TestCase):
+    setUp = helpers.MultipleTaps.setUp
+    prepare = helpers.MultipleTaps.prepare
+    replay = helpers.MultipleTaps.replay
+    run_tool = helpers.MultipleTaps.run_tool
+
+    def test_different_taps_write_instruction_and_data_together(self):
+        text = self.replay(
+            'iReset; iWrite tap1.INSTRUCTION 3; iApply; '
+            'iWrite tap0.INSTRUCTION 3; iWrite c1.value 85; iApply -together; '
+            'iRead c1.value 85; iApply;\n')
+        self.assertIn('iApply -together', text)
+        self.assertIn('iWrite tap0.INSTRUCTION 0b0011', text)
+        self.assertIn('iWrite c1.value 0b1010101', text)
+
+    def replay_source(self, source, models, count, body, extra=()):
+        pdl = self.prepare(source, models, count, body)
+        output = self.run_tool(pdl, extra=('--debug', *extra))
+        self.assertEqual(output, self.run_tool(self.root / 'result.pdl', 'replay.pdl',
+                                              extra=extra))
+        self.assertEqual(output, self.run_tool(pdl, 'flat.pdl',
+                                              inputs=['--icl', 'debug/MultiTapTop.icl'],
+                                              extra=extra))
+        self.assertEqual(output, self.run_tool(self.root / 'result.pdl', 'flat-replay.pdl',
+                                              inputs=['--icl', 'debug/MultiTapTop.icl'],
+                                              extra=extra))
+        return output
+
+    def scale(self, independent):
+        for count, width in [(2, 8), (2, 32), (2, 64), (2, 256),
+                             (4, 8), (8, 8), (16, 8)]:
+            with self.subTest(count=count, width=width):
+                source, models = helpers.network((width,) * count,
+                                                 tuple(4 + i % 3 for i in range(count)))
+                source = source.replace('ScanInSource si; ResetValue 0;',
+                                        'ScanInSource si; CaptureSource value; ResetValue 0;')
+                bits = '10100011' * (width // 8)
+                setup = ''.join(f'iWrite tap{i}.INSTRUCTION 3; ' for i in range(1, count, 2))
+                ir = ''.join(f'iWrite tap{i}.INSTRUCTION 3; ' for i in range(0, count, 2))
+                data = ''.join(f'iWrite c{i}.value 0b{bits}; ' for i in range(1, count, 2))
+                reads = ''.join(f'iRead c{i}.value 0; ' for i in range(1, count, 2))
+                queries = ''.join(f'iNote c{i}=[iGetReadData c{i}.value -bin]; '
+                                  for i in range(1, count, 2))
+                body = ('iPDLLevel 1; iReset; ' + setup + 'iApply; ' + ir +
+                        ('' if independent else 'iApply; ') + data + 'iApply -together; ' +
+                        reads + 'iApply; ' + queries + 'iNote status=[iGetStatus];\n')
+                started = time.monotonic()
+                text = self.replay_source(source, models, count, body,
+                                          extra=('--model_readback',))
+                notes = [line[6:] for line in text.splitlines()
+                         if line.startswith('iNote ') and 'modeled ' not in line]
+                self.assertEqual(notes, [f'c{i}=0b{bits}' for i in range(1, count, 2)] +
+                                 [f'status={bits.count("1") * (count // 2)}'])
+                print(json.dumps(dict(independent=independent, taps=count, width=width,
+                                      input_bytes=len(source) + len(models) + len(body),
+                                      four_replays_seconds=time.monotonic() - started,
+                                      sha256=hashlib.sha256(text.encode()).hexdigest())),
+                      flush=True)
+
+    def test_independent_phase_scale(self):
+        self.scale(True)
+
+    def test_common_phase_control_scale(self):
+        self.scale(False)
+
+    def test_reverse_orientation_and_explicit_instruction_comparison(self):
+        text = self.replay(
+            'iReset; iWrite tap0.INSTRUCTION 3; iApply; '
+            'iWrite c0.value 9; iWrite tap1.INSTRUCTION 3; '
+            'iRead tap1.INSTRUCTION 0bxx001; iApply -together; '
+            'iRead c0.value 9; iWrite c1.value 85; iApply;\n')
+        self.assertIn('iRead tap1.INSTRUCTION 0bxx001', text)
+
+    def test_access_together_alias_combines_different_taps(self):
+        source, models = helpers.network()
+        source = source.replace('Module MultiTapTop {',
+                                'Module MultiTapTop { Alias pair[10:0] = '
+                                'tap0.INSTRUCTION, c1.value {AccessTogether;}')
+        text = self.replay_source(
+            source, models, 2,
+            'iReset; iWrite tap1.INSTRUCTION 3; iApply; '
+            'iWrite pair 469; iApply; iRead pair 213; iApply;\n')
+        self.assertIn('iWrite c1.value 0b1010101', text)
+
+    def test_distinct_equivalent_clock_roots(self):
+        self.replay('iReset; iWrite tap1.INSTRUCTION 3; iApply; '
+                    'iWrite tap0.INSTRUCTION 3; iWrite c1.value 85; '
+                    'iApply -together;\n', separate_clocks=True)
+
+    def test_four_taps_keep_instruction_and_data_groups_independent(self):
+        self.replay(
+            'iReset; iWrite tap1.INSTRUCTION 3; iWrite tap3.INSTRUCTION 3; iApply; '
+            'iWrite tap0.INSTRUCTION 3; iWrite c1.value 85; '
+            'iWrite tap2.INSTRUCTION 3; iWrite c3.value 165; iApply -together; '
+            'iRead c1.value 85; iRead c3.value 165; iApply;\n',
+            widths=(4, 7, 5, 8), ir_widths=(4, 5, 6, 7))
+
+    def test_live_controls_and_taken_lane_survive_mixed_phases(self):
+        self.replay(
+            'iReset; iWrite c2.value 21; iApply; iTake c2.value; '
+            'iWrite tap1.INSTRUCTION 3; iApply; '
+            'iWrite tap0.INSTRUCTION 3; iWrite c1.value 85; iApply -together; '
+            'iRead c2.value 21; iApply;\n', widths=(4, 7, 5), ir_widths=(4, 5, 6))
+        source, models = helpers.network()
+        source = source.replace('ScanInSource si; ResetValue 0;',
+                                'ScanInSource si; CaptureSource value; ResetValue 0;')
+        source = source.replace('DataOutPort q',
+                                'ToCaptureEnPort capture_out {Source capture;} DataOutPort q')
+        source = source.replace('InputPort reset = TRST1;',
+                                'InputPort reset = TRST1; InputPort capture = c0.capture_out;')
+        text = self.replay_source(
+            source, models, 2,
+            'iPDLLevel 1; iReset; iWrite tap1.INSTRUCTION 3; iApply; '
+            'iWrite tap0.INSTRUCTION 3; iWrite c1.value 83; iApply -together; '
+            'iRead c1.value 0; iApply; iNote [iGetReadData c1.value -bin]; '
+            'iNote [iGetStatus];\n', extra=('--model_readback',))
+        self.assertEqual([line[6:] for line in text.splitlines()
+                          if line.startswith('iNote ') and 'modeled ' not in line],
+                         ['0b1010011', '4'])
+
+    def test_actual_mixed_capture_history_and_status(self):
+        source, models = helpers.network()
+        source = source.replace('ScanInSource si; ResetValue 0;',
+                                'ScanInSource si; CaptureSource value; ResetValue 0;')
+        source = source.replace('Module MultiTapTop {',
+                                'Module MultiTapTop { Alias pair[10:0] = '
+                                'tap0.INSTRUCTION, c1.value {AccessTogether;}')
+        text = self.replay_source(
+            source, models, 2,
+            'iPDLLevel 1; iReset; iWrite tap1.INSTRUCTION 3; iApply; '
+            'iWrite pair 467; iApply; iRead pair 0; iApply; '
+            'iNote [iGetReadData pair -bin]; '
+            'iNote [iGetMiscompares pair -bin]; '
+            'iNote [iGetStatus -clear]; iNote [iGetStatus];\n',
+            extra=('--model_readback',))
+        notes = [line[6:] for line in text.splitlines()
+                 if line.startswith('iNote ') and 'modeled ' not in line]
+        self.assertEqual(notes, ['0b00011010011', '0b00011010011', '5', '0'])
+
+    def test_local_reset_rewrite_retains_mixed_update(self):
+        source, models = helpers.network()
+        pdl = self.prepare(source, models, 2,
+                           'iReset; iWrite tap1.INSTRUCTION 3; iApply; '
+                           'iWrite tap0.INSTRUCTION 3; iWrite c1.value 83; '
+                           'iApply -together;\n')
+        text = self.run_tool(pdl, extra=('--local_reset', 'reset.pdl'))
+        self.assertEqual(text, self.run_tool(self.root / 'reset.pdl', 'reset-replay.pdl'))
+        self.assertEqual(text, self.run_tool(self.root / 'result.pdl', 'replay.pdl'))
+
+    def test_same_tap_simultaneous_ir_and_dr_remains_rejected(self):
+        source, models = helpers.network()
+        pdl = self.prepare(source, models, 2,
+                           'iReset; iWrite tap0.INSTRUCTION 3; '
+                           'iWrite c0.value 9; iApply -together;\n')
+        output = self.root / 'result.pdl'
+        output.write_text('preserve previous output\n')
+        self.assertIn('IR and DR', self.run_tool(pdl, ok=False))
+        self.assertEqual(output.read_text(), 'preserve previous output\n')
+
+    def test_shared_tms_remains_rejected(self):
+        source, models = helpers.network(shared_tms=True)
+        pdl = self.prepare(source, models, 2,
+                           'iReset; iWrite tap1.INSTRUCTION 3; iApply; '
+                           'iWrite tap0.INSTRUCTION 3; iWrite c1.value 85; '
+                           'iApply -together;\n')
+        output = self.root / 'result.pdl'
+        output.write_text('preserve previous output\n')
+        started = time.monotonic()
+        self.assertIn('iApply -together', self.run_tool(pdl, ok=False))
+        self.assertLess(time.monotonic() - started, 5.0)
+        self.assertEqual(output.read_text(), 'preserve previous output\n')
+
+
+if __name__ == '__main__':
+    unittest.main()

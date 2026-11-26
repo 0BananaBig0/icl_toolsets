@@ -12,7 +12,7 @@ list. Completing one supported case does not complete a broad item below.
 
 | Item | Required result | Status / acceptance |
 |---|---|---|
-| 2 | Independently phased TAPs, shared serial storage, intermediate taps, overlapping returns and independent lanes | Pending. Common-phase/equivalent-TCK multiple TAPs and disjoint lanes already work. Add state/capture/update/ownership cases for the remaining topologies and prove original/flat/generated replay. |
+| 2 | Independently phased TAPs, shared serial storage, intermediate taps, overlapping returns and independent lanes | Task188 qualifies mixed IR/DR simultaneous groups across distinct-TMS TAPs on equivalent clocks, with original/flat/generated and actual model replay. General independent state/clock phases, shared serial storage, intermediate/overlapping returns and the remaining topologies are pending. [Evidence](#task188-independent-tap-irdr-phases). |
 | 3 | General independently gated and serial-derived scan/reset events | Pending. Retain edge ordering, hidden storage and transient resets across source/flat/generated replay; no guard-only enabling. |
 | 4 | Cyclic/self-referential DataRegister updates and callbacks | Task185 adds bounded primary automatic-callback actual observations; broader cycles/events remain pending. [Qualified increment](#task185-automatic-primary-callback-observations). Task167 supports actual native logical merge histories with source-consistent serialized generation; see its qualified increment below. Task164 supports callback-containing iMerge calls using serial fallback and preserves ordinary batching; all64 gates pass (15native/15SAN,74x1208 each generator,12quality,4041inputs/38products),405 matrix/example and4 allocation processes. Review0C/3I/1M: all Important findings fixed; one new Minor deferred(total16). All28 merged-result checks pass on identical4041inputs/20products;117stashes preserved. Task163 passes63 final qualification gates:15 native and15 leak-enabled sanitizer suites,73 suites/1189 methods in each generator variant,15 C++ quality checks, source packaging and4039 input/38 product hashes. The72 regular downstream processes peak at4.2884s/373760KiB; six512/1024-bit runs peak at1.1308s/121236KiB. All324 new/preserved matrix and guide processes plus4 dynamic allocation probes pass. Independent review found0Critical/5Important/1Minor; one test-first pass fixes all five Important findings. The benchmark checks postcondition counts, widths and allowed names; exact ordered register/value pairs remain a deferred Minor. Functional regressions check identities and payloads. All26 merged-result checks pass on identical4039 inputs and20 copied qualified executables, with117 stashes preserved. Broader inventory and excluded coverage item1 remain open. Task162 supports mixed ordinary/callback alias bits with exact native ordinary accesses and preserved callback arguments/source spans; all61 final gates pass (15native/15SAN,72x1169 each generator,9quality,4036inputs/38products),243 matrix and4 dynamic allocation processes. Review0C/2I/1M is fully resolved; merged and pushed;24 integration checks pass on identical source/product hashes. Task161 supports separately queued ordinary requests with explicit callbacks, preserving known caller goals through native frames/state and actual ordinary histories; all59 final gates pass (15native/15SAN,71x1153 each generator,30quality,4033input/38product hashes); merged and pushed;22 integration checks pass on identical source/product hashes. General symbolic/control/serial automatic callbacks remain open. Pending broader callbacks. Task153 adds explicit callback-only procedure execution, masks/aliases, ancestor namespaces, cancellation/error recovery and source/flat/generated/local-reset replay; all43 post-fix qualification gates pass, including63 suites/1048 tests per generator and14 native/14 sanitizer suites. Task159 supports actual ordinary endpoint observations in explicit write procedures with unknown abstract callback storage. General automatic dependencies, modeled merged/invoked-read histories and physical output remain open. Task145's historical declaration checkpoint added typed callbacks and canonical flat preservation. Its seven focused methods,13 native/13 sanitizer suites,54x900 per generator variant,21 quality gates and packaging pass. Independent review reports0Critical/0Important/0Minor; all18 reviewer-designed probes meet expectations. Task144 adds bounded simultaneous feedback from real preceding storage, known/unknown convergence, controlling history, capture ordering and intermediate ownership/rollback. One independent review found0Critical/3Important/0Minor; one verified fix pass resolves all three findings and preserves autonomous goal intent. All13 native/13 native sanitizer suites,53x893 per generator variant,14 focused replay methods,39 quality gates and source packaging pass. Changing feedback-derived external reset events remain item3. |
 | 5 | Stateful absolute time and remaining clock semantics | Pending. Relative waits, clock overrides and restricted clock-only absolute waits already work; Task141 fixes associated-flat override target/source mapping. Cover stateful events, oscillator restoration/frequency, phases and remaining names/source mappings without inventing periods. |
@@ -1602,3 +1602,33 @@ the readback API regression, coverage inventory and77directional snapshots.
 The owned task branch is deleted;the reused worktree is detached;117stashes
 are preserved. The Important review gap is resolved;31Minors remain deferred.
 Broader original requirements and excluded1 remain open.
+
+## Task188 independent TAP IR/DR phases
+
+Task188 qualification: full make check passes, including CLI/regression/fuzz/
+LSP/grammar/Vim;215Python suite executions report3290tests, with5optional real
+ANTLR integrations skipped (ICL_REF_DIR unset). There are37successful check
+commands and15C++style checks. All15leak-enabled sanitizer native suites and
+focused functional suites pass, including10new-phase and20non-scale existing
+multiple-TAP methods. Source packaging and both corpus audits pass.
+
+Three paired7-point measurement rounds retain byte-identical parent/current
+common-phase controls. All63points/252CLI replay processes pass. Independent
+matrices take12.86-13.73s;their runner/child-process-tree peak is359240KiB. The
+slowest measured independent point is2TAPs by256bits, four forms in6.397s.
+No speedup over the unsupported parent mixed mode is claimed.
+
+The22-method sanitizer multiple-TAP run fails three16/32TAP scale subcases at
+the existing solver limit;fresh parent and candidate builds fail the same three.
+Those instrumented scale cases remain unqualified;no limit is raised and no
+sanitizer512MiB scale guarantee is claimed. Three Tessent2026.2 probes crash at
+elaboration before PDL, including the ordinary control;vendor equivalence is
+unqualified. All failures, optional skips and raw evidence remain recorded.
+
+Final help-only wording was followed by fresh normal/static12-method CLI runs,
+sanitizer10-method functional replay, help checks and source-package validation.
+The final manifest binds4091inputs and44selected executables. The model audit
+retains1334files/1763effective modules:1032canonical,44unsupported serialization
+forms and687default elaboration failures. No model/default acceptance is added.
+Final review and integration are pending;31inherited Minors, broader original
+requirements and excluded1remain open.

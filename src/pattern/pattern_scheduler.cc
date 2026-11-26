@@ -141,6 +141,12 @@ class ScanScheduler::Impl {
         }
       }
       execution_ = std::make_unique<TapExecution>(netlist);
+      for (const auto& [owner, registers] : execution_->RegisterOwners()) {
+        register_taps_.emplace(owner, owner);
+        for (size_t id : registers) {
+          register_taps_.emplace(id, owner);
+        }
+      }
       state_.Restore(execution_->State());
     }
     const auto interfaces = EffectiveScanInterfaces(netlist);
@@ -3446,18 +3452,45 @@ class ScanScheduler::Impl {
     bool read = false;
     std::set<size_t> members, requested;
   };
-  std::tuple<std::string, std::set<size_t>, std::vector<size_t>>
+  std::tuple<std::string, std::set<size_t>, std::vector<size_t>, bool>
   CheckAccessGroups(
       const std::map<std::pair<size_t, bool>, AccessGroup>& groups) const {
     std::string access_context;
     std::set<size_t> grouped_reads;
+    bool independent_instructions = false;
     for (const auto& [key, group] : groups) {
       const auto irs = std::count_if(
           group.members.begin(), group.members.end(),
           [&](size_t id) { return instruction_registers_.count(id); });
       if (irs != 0 && static_cast<size_t>(irs) != group.members.size()) {
-        throw std::runtime_error(
-            "IR and DR registers cannot share a simultaneous access");
+        const auto& members = group.members;
+        const bool separate = std::all_of(
+            group.members.begin(), group.members.end(), [&](size_t id) {
+              const auto owner = register_taps_.find(id);
+              return owner != register_taps_.end() &&
+                     (instruction_registers_.count(id) ||
+                      !members.count(owner->second));
+            });
+        if (!separate) {
+          throw std::runtime_error(
+              "IR and DR registers cannot share a simultaneous access");
+        }
+        for (size_t ir : group.members) {
+          if (!instruction_registers_.count(ir)) continue;
+          const auto mode =
+              instruction_registers_.at(ir)->pins.at("tap_scan_mode");
+          for (size_t id : group.members) {
+            if (instruction_registers_.count(id)) continue;
+            const auto owner = register_taps_.at(id);
+            if (instruction_registers_.at(owner)->pins.at("tap_scan_mode") ==
+                mode) {
+              throw std::runtime_error(
+                  "IR and DR registers cannot share a simultaneous access "
+                  "on shared TMS");
+            }
+          }
+        }
+        independent_instructions = true;
       }
       if (group.read) {
         grouped_reads.insert(group.requested.begin(), group.requested.end());
@@ -3470,7 +3503,8 @@ class ScanScheduler::Impl {
     std::sort(read_order.begin(), read_order.end(), [&](size_t a, size_t b) {
       return netlist_.nodes[a].name < netlist_.nodes[b].name;
     });
-    return {access_context, grouped_reads, read_order};
+    return {access_context, grouped_reads, read_order,
+            independent_instructions};
   }
   std::optional<std::vector<ScanStep>> TryNativeScan(
       const std::vector<Operation>& operations,
@@ -5045,7 +5079,7 @@ class ScanScheduler::Impl {
   struct Frame {
     Values state, loads, fill;
     std::vector<CaptureComparison> comparisons;
-    std::optional<SymbolicValue> instruction;
+    Values instructions;
     std::optional<z3::expr> parallel;
     std::optional<z3::expr> clocks;
     std::map<size_t, z3::expr> drives;
@@ -5716,8 +5750,9 @@ class ScanScheduler::Impl {
       ClientSelections(&pins, frame, phase);
       return pins;
     }
-    const auto ir = Known(*frame.instruction, true);
     for (const auto& [name, tap] : netlist_.taps) {
+      const auto ir =
+          Known(frame.instructions.at(tap.instruction_register), true);
       for (const auto& [role, id] : tap.controls) {
         pins.insert_or_assign(
             id, BooleanValue(!ir && context_.bool_val(role == phase)));
@@ -5734,8 +5769,6 @@ class ScanScheduler::Impl {
     Events result;
     const auto scan =
         frame.parallel ? !*frame.parallel : context_.bool_val(true);
-    const auto ir =
-        tap_ ? Known(*frame.instruction, true) : context_.bool_val(false);
     const auto& bindings =
         tap_ ? execution_->RegisterInterfaces() : register_ports_;
     for (const std::string phase : {"capture", "shift", "update", "idle"}) {
@@ -5756,6 +5789,10 @@ class ScanScheduler::Impl {
       SymbolicNetwork before(netlist_, context_, pins, global_resets_);
       for (size_t id : registers_) {
         if (instruction_registers_.count(id)) continue;
+        const auto owner = register_taps_.find(id);
+        const auto ir = tap_ && owner != register_taps_.end()
+                            ? Known(frame.instructions.at(owner->second), true)
+                            : context_.bool_val(false);
         const auto active = frame.active.count(id) ? frame.active.at(id)
                                                    : context_.bool_val(false);
         const auto entry = bindings.find(id);
@@ -5831,7 +5868,8 @@ class ScanScheduler::Impl {
     if (shadows && tap_) {
       for (const std::string role : {"capture", "shift", "update"}) {
         for (const auto& [id, tap] : instruction_registers_) {
-          result[role].emplace(id, scan && ir);
+          result[role].emplace(id,
+                               scan && Known(frame.instructions.at(id), true));
         }
       }
     }
@@ -5930,8 +5968,9 @@ class ScanScheduler::Impl {
       for (const auto& [id, tap] : instruction_registers_) {
         state.insert_or_assign(tap->ir_select,
                                SymbolicValue{ir, context_.bv_val(1, 1)});
+        frame.instructions.emplace(id,
+                                   SymbolicValue{ir, context_.bv_val(1, 1)});
       }
-      frame.instruction = SymbolicValue{ir, context_.bv_val(1, 1)};
     } else {
       state = EventPins(state, frame, "capture");
       SettleResets(&state, nullptr, nullptr, &solver);
@@ -6748,8 +6787,8 @@ class ScanScheduler::Impl {
         if (explicit_goals.count(id)) data_write_goals.push_back(id);
       }
     }
-    const auto [access_context, grouped_reads, read_order] =
-        CheckAccessGroups(groups);
+    const auto [access_context, grouped_reads, read_order,
+                independent_instructions] = CheckAccessGroups(groups);
     CheckScanConnectivity(required);
     const auto desired_preserved =
         DesiredPreserved(preserved, end_goals, explicit_writes, operations);
@@ -6767,7 +6806,7 @@ class ScanScheduler::Impl {
       throw std::runtime_error(
           "physical PDL requires one exact physical TAP CSU");
     }
-    bool events = event_mode.value_or(false);
+    bool events = independent_instructions || event_mode.value_or(false);
     if (!event_mode) {
       const bool native_groups = std::all_of(
           groups.begin(), groups.end(),
@@ -6779,7 +6818,8 @@ class ScanScheduler::Impl {
                                     permitted_tap_data, observe);
         if (native) return std::move(*native);
       }
-      events = (tap_ || client_controls_) && NeedsScanEvents();
+      events = independent_instructions ||
+               ((tap_ || client_controls_) && NeedsScanEvents());
       if (events) {
         auto regular = TryRegularReads(operations, together, preserved,
                                        explicit_writes, observe);
@@ -6888,19 +6928,31 @@ class ScanScheduler::Impl {
                                     context_.int_val(0));
         }
         if (tap_) {
-          const auto ir =
+          const auto common_ir =
               context_.bv_const(("ir_" + std::to_string(time)).c_str(), 1);
-          const auto instruction = Choose(scan, {ir, context_.bv_val(1, 1)},
-                                          state.at(tap_->ir_select));
+          auto any_ir = context_.bool_val(false);
+          std::map<size_t, z3::expr> modes;
           for (const auto& [id, tap] : instruction_registers_) {
+            const auto ir =
+                independent_instructions
+                    ? context_.bv_const(("ir_" + std::to_string(time) + "_" +
+                                         std::to_string(id))
+                                            .c_str(),
+                                        1)
+                    : common_ir;
+            const auto instruction = Choose(scan, {ir, context_.bv_val(1, 1)},
+                                            state.at(tap->ir_select));
             state.insert_or_assign(tap->ir_select, instruction);
+            frame.instructions.emplace(id, instruction);
+            any_ir = any_ir || ir == context_.bv_val(1, 1);
+            const auto [mode, inserted] =
+                modes.emplace(tap->pins.at("tap_scan_mode"), ir);
+            if (!inserted) solver.add(z3::implies(scan, mode->second == ir));
           }
-          frame.instruction = instruction;
-          cycles = cycles +
-                   z3::ite(scan,
-                           z3::ite(ir == context_.bv_val(1, 1),
-                                   context_.int_val(6), context_.int_val(5)),
-                           context_.int_val(0));
+          cycles = cycles + z3::ite(scan,
+                                    z3::ite(any_ir, context_.int_val(6),
+                                            context_.int_val(5)),
+                                    context_.int_val(0));
         }
         if (client_controls_) state = EventPins(state, frame, "capture");
         const auto event = scan || any_drive;
@@ -7689,8 +7741,23 @@ class ScanScheduler::Impl {
       const std::function<void(size_t, const NetworkState&)>& observe = {}) {
     const size_t clocks = lanes.front().second.serial.size();
     std::set<size_t> writable, reset_held;
-    for (char tms : std::string(step.instruction ? "1100" : "100")) {
-      Cycle(tap_replay, tms, {}, check);
+    const auto prefix = std::string(step.instruction ? "1100" : "100");
+    for (size_t tick = 0; tick < prefix.size(); ++tick) {
+      std::map<size_t, std::string> modes;
+      for (const auto& [name, tap] : netlist_.taps) {
+        const bool instruction =
+            step.instruction_taps.empty()
+                ? step.instruction
+                : step.instruction_taps.count(tap.instruction_register);
+        const auto path = instruction ? "1100" : "0100";
+        const char tms = step.instruction ? path[tick] : prefix[tick];
+        const auto [mode, inserted] =
+            modes.emplace(tap.pins.at("tap_scan_mode"), std::string(1, tms));
+        if (!inserted && mode->second != std::string(1, tms)) {
+          throw std::runtime_error("conflicting TAP phases on shared TMS");
+        }
+      }
+      Cycle(tap_replay, prefix[tick], modes, check);
     }
     for (size_t i = 0; i < clocks; ++i) {
       std::map<size_t, std::string> inputs;
@@ -7757,10 +7824,16 @@ class ScanScheduler::Impl {
       }
     }
     if (tap_) {
-      step.instruction = Decode(model, *frame.instruction) == "1";
       for (const auto& [id, tap] : instruction_registers_) {
-        replay->Drive(tap->ir_select, step.instruction ? "1" : "0");
+        const bool instruction =
+            Decode(model, frame.instructions.at(id)) == "1";
+        if (instruction) step.instruction_taps.insert(id);
+        replay->Drive(tap->ir_select, instruction ? "1" : "0");
       }
+      step.instruction = !step.instruction_taps.empty();
+      // Generated register requests must retain this mixed physical phase.
+      step.together = step.instruction && step.instruction_taps.size() !=
+                                              instruction_registers_.size();
     }
     std::map<size_t, std::string> capture_expected;
     for (const auto& item : frame.comparisons) {
@@ -7814,7 +7887,7 @@ class ScanScheduler::Impl {
             model.eval(frame.read.at(id), true).is_true()) {
           compare = expected.at(id);
           step.expected.emplace(netlist_.nodes[id].name, compare);
-        } else if (step.instruction && !required.count(id)) {
+        } else if (instruction_registers_.count(id) && !required.count(id)) {
           compare = instruction_registers_.at(id)->bsdl.capture;
           step.expected.emplace(netlist_.nodes[id].name, compare);
         }
@@ -8017,6 +8090,7 @@ class ScanScheduler::Impl {
   OneHotReadResolver one_hot_;
   const TapRuntimeModel* tap_ = nullptr;
   std::map<size_t, const TapRuntimeModel*> instruction_registers_;
+  std::map<size_t, size_t> register_taps_;
   std::set<size_t> tap_data_registers_, tap_pins_, tap_clocks_;
   std::unique_ptr<TapExecution> execution_;
   bool client_controls_ = false;

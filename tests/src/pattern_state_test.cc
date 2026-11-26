@@ -1150,6 +1150,76 @@ Module SharedEdge {
   }
 }
 
+void TestIndependentTapPhases() {
+  const std::string fixture =
+      "tests/cases/ours/pattern_generation/multiple_taps/";
+  pattern::Design design;
+  design.AddIcl("independent.icl", ReadFile(fixture + "multiple_explicit.icl"));
+  for (const auto* entity : {"ProbeA", "ProbeB"}) {
+    design.AddBsdl("models.bsdl", ReadFile(fixture + "models.bsdl"), entity);
+  }
+  const auto network = pattern::ElaborateTapNetwork(design, "MultiTapTop");
+  pattern::Design flat;
+  flat.AddIcl("flat.icl", pattern::SerializeIcl(network.netlist));
+  const auto restored = pattern::ElaborateTapNetwork(flat, "MultiTapTop");
+  pattern::TapExecution run(network.netlist), copy(restored.netlist);
+  for (auto* engine : {&run, &copy}) {
+    for (const auto* reset : {"TRSTA", "TRSTB"}) {
+      engine->Drive(reset, "0");
+      engine->Drive(reset, "1");
+    }
+  }
+  const auto cycle = [&](char a, char b, char ai = '0', char bi = '0') {
+    for (auto* engine : {&run, &copy}) {
+      const auto& netlist = engine == &run ? network.netlist : restored.netlist;
+      engine->Drive({{netlist.node_ids.at("TMSA"), std::string(1, a)},
+                     {netlist.node_ids.at("TMSB"), std::string(1, b)},
+                     {netlist.node_ids.at("TDIA"), std::string(1, ai)},
+                     {netlist.node_ids.at("TDIB"), std::string(1, bi)}});
+      engine->RisingEdge("TCK");
+      engine->FallingEdge("TCK");
+    }
+    for (const auto* cell :
+         {"a.value", "b.value", "tapA.INSTRUCTION", "tapB.INSTRUCTION"}) {
+      Require(run.Value(cell) == copy.Value(cell) &&
+                  run.Value(cell, true) == copy.Value(cell, true),
+              "independent original and flat edge state agree");
+    }
+  };
+  cycle('0', '0');
+  for (char tms : std::string("1100")) cycle(tms, tms);
+  for (size_t i = 0; i < 4; ++i) {
+    cycle(i == 3 ? '1' : '0', i == 3 ? '1' : '0', "0100"[i], "1100"[i]);
+  }
+  cycle('1', '1');
+  cycle('0', '0');
+  Require(run.Value("tapA.INSTRUCTION") == "0010" &&
+              run.Value("tapB.INSTRUCTION") == "0011",
+          "independent phase setup retains different instructions");
+  for (size_t i = 0; i < 4; ++i) cycle("1100"[i], "0100"[i]);
+  Require(run.Value("tapA.INSTRUCTION", true) == "0001" &&
+              run.Value("b.value", true) == "xxxx",
+          "mixed paths reach IR and DR capture on the same rising edge");
+  for (size_t i = 0; i < 4; ++i) {
+    cycle(i == 3 ? '1' : '0', i == 3 ? '1' : '0', "1100"[i], "1011"[i]);
+  }
+  for (auto* engine : {&run, &copy}) {
+    engine->Drive("TMSA", "1");
+    engine->Drive("TMSB", "1");
+    engine->RisingEdge("TCK");
+    Require(engine->Value("tapA.INSTRUCTION") == "0010" &&
+                engine->Value("b.value") == "0000",
+            "both held values remain old before the shared falling edge");
+    engine->FallingEdge("TCK");
+    Require(
+        engine->Value("tapA.INSTRUCTION") == "0011" &&
+            engine->Value("b.value") == "1101" &&
+            engine->Value("tapB.INSTRUCTION") == "0011" &&
+            engine->Value("a.value") == "0000",
+        "one falling edge updates IR and DR without changing other storage");
+  }
+}
+
 void TestEquivalentClockBatch() {
   const std::string fixture =
       "tests/cases/ours/pattern_generation/multiple_taps/";
@@ -1357,6 +1427,7 @@ int main() {
     TestCompleteShift();
     TestImpliedToTckValues();
     TestEquivalentClockBatch();
+    TestIndependentTapPhases();
     for (const auto* control : {"capture", "shift", "update"}) {
       TestSharedTapEdge(true, control);
       TestSharedTapEdge(false, control);

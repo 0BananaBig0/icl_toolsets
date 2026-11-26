@@ -32,6 +32,8 @@ struct ScanStep {
   std::map<std::string, std::string> writes, expected;
   // Selected routes when observing; not serialized as hardware or assumptions.
   std::vector<PrimaryRead> primary_reads;
+  // Selected IR lanes; an empty set retains the scalar instruction flag.
+  std::set<size_t> instruction_taps;
 };
 struct RawHistoryProjection {
   std::string target, expected;
