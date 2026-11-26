@@ -261,8 +261,12 @@ if {$::calls != 3 || $::args != 3} {error repeated_count}
             "iWrite value 9; catch {iApply}; iApply"), "requires iReset")
 
     def test_observation_and_physical_guards(self):
-        self.rejected(self.merged("iWrite dest 9; iApply"),
-                      "callback histories", modeled=True)
+        automatic = downstream.PROCS+self.merged("iWrite dest 9; iApply")+'''
+; iRead endpoint 9; iRead q 0bx; iApply
+iNote [iGetReadData endpoint -dec]; iNote [iGetReadData q -bin]
+'''
+        automatic_output = downstream.observations.ModeledReadback.replay(self, MODEL, automatic)
+        self.assertEqual(self.notes(automatic_output), [b"value=0b1001", b"9", b"0bxxxx"])
         self.rejected(self.merged("iWrite value 9; iApply"), "callbacks",
                       extra=("--physical_pdl",))
         source = MODEL.replace("WriteCallBack Chains store <D> <R>;",

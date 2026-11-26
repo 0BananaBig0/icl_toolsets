@@ -5513,3 +5513,73 @@ existing gate receipt by equality rather than rewriting it.
 All37 Task184 merged-result checks pass against identical4,087qualified inputs
 and23copied executables. Master is pushed, the owned task branch is deleted,
 and117stashes remain. Broader inventory work remains open.
+
+## Task185 automatic primary callback observations
+
+Original items4/6 gain actual primary observations after automatic write
+callbacks in primary-only DataRegister networks. Planning retains callback
+intent; actual execution masks callback storage and runs exact native input
+frames. DataRegister goal markers never become actual input events or data.
+Selected logical reads are checked against actual route guards; preservation
+uses actual state. Read-only frames do not generate input events. Failed replay
+rolls back before publishing; subscriber failures retain completed state.
+
+The runnable [guide](pattern-generation.md#automatic-primary-callback-observations-task185)
+shows known endpoint13, unknown downstream storage and three known endpoint
+mismatches cleared exactly once. Original/flat/generated/local-reset tests cover
+callback-local old/reset data, sparse/inverted reads, namespaces, once-only
+arguments, cancellation/repetition, cyclic retry, serial merges, actual unknown
+selectors, reserved storage and sentinel outputs. Two former blanket rejection
+fixtures now verify successful bounded support; other unsupported modes retain
+their guards. The new maintained benchmark compares actual hardware bytes to
+default parent generation, independently validating candidate actual histories.
+
+Broader scan/TAP/clock/physical/timed callback histories, live transport,
+excluded1,36inherited deferred Minors and other inventory requirements remain
+open. Qualification and review results will be recorded after their gates pass.
+
+Scale scope correction from actual probes: qualify1/2/8lanes at8/32bits,
+1/2at64bits and1at256bits. Initial32-lane and two1,024-bit independent
+callback controls reach pre-existing solver/time limits; shared-source
+alternatives do too. Those retained exploratory failures do not establish
+larger support. Larger planner scaling remains item10; no limits are raised.
+
+The new matrix records `ASAN_OPTIONS=detect_leaks=1:quarantine_size_mb=128`.
+Normal exploratory measurements peak below157MiB; default sanitizer allocation
+retention peaks at593MiB and exceeds512MiB. The128MiBquarantine probe returns
+identical bytes at415MiB. This is an explicit sanitizer environment choice,
+not a production memory reduction; functional sanitizer suites retain their
+default quarantine. No memory guarantee is claimed for unconfigured sanitizers.
+
+Pre-review compatibility correction: collect primary read-route provenance only
+when the existing observation callback requests it. The bounded callback
+planner explicitly requests provenance and discards planned observation values;
+ordinary generation avoids unused route allocations. A native test fails on
+unwanted ordinary metadata, then passes. The retained64-callback mixed benchmark
+previously reached524744KiB against524288KiB; after the correction its11default
+SAN measurements pass at519652KiB maximum, with identical functional results.
+The initial attribution to extra planning state was disproved: that explicit
+callback fixture has no native WriteDataSource, so the bounded path is inactive.
+The final scheduler change invalidates earlier products; all118qualification
+gates are now rerun fresh, including both91suite/1464method generator variants.
+Earlier attempted same-task reuse is historical evidence, not final reuse.
+
+All118final qualification gates pass fresh after the metadata-allocation fix;
+no earlier gate or partial generator result is reused. Normal and static
+generators each pass91suites/1464methods. All30native normal/SAN suites,
+2static-native suites,21changed-C++quality checks and source packaging pass.
+The default-SAN mixed-callback compatibility suite passes17methods.
+
+The artifact validator verifies4090input/42product hashes,2577maintained
+timing/RSS rows including555live generated-history runs,32guide processes
+and2allocation probes. Allocation counts are56/56with zero root-width growth.
+The unchanged source audit retains1032canonical models,44explicit unsupported
+models,687default elaboration failures and2562source identities.
+Across those2577measured rows, maximum wall time is6.7360s and peak RSS470628KiB.
+The new135-run automatic matrix peaks at6.7360s/405740KiB under its documented
+sanitizer configuration. Current forms preserve exact hardware bytes against
+the immediate parent's default automatic generation; retained named-history
+controls use their original frozen pre-feature binary. No physical transport,
+unconfigured sanitizer budget or larger planner-scale completion is claimed.
+Independent final review is pending; excluded1,36inherited deferred Minors and
+broader original inventory requirements remain open.

@@ -19,6 +19,10 @@ namespace pattern {
 struct ScanLane {
   std::string input, output, serial, serial_expected;
 };
+struct PrimaryRead {
+  BitReference bit;
+  size_t route = 0;
+};
 struct ScanStep {
   bool instruction = false, together = false;
   std::string input, output, serial, serial_expected;
@@ -26,6 +30,8 @@ struct ScanStep {
   std::vector<ScanLane> lanes;
   std::map<std::string, std::string> loads;
   std::map<std::string, std::string> writes, expected;
+  // Selected routes when observing; not serialized as hardware or assumptions.
+  std::vector<PrimaryRead> primary_reads;
 };
 struct RawHistoryProjection {
   std::string target, expected;
@@ -71,6 +77,13 @@ class ScanScheduler {
       bool explicit_writes = true, bool physical = false,
       const PioObservation& observe = {},
       const std::map<size_t, std::string>& caller_goals = {});
+  // Execute planned primary frames on actual state, validating actual routes.
+  // DataRegister goal markers do not drive or assume storage.
+  void ReplayPrimary(const std::vector<Operation>& operations,
+                     const std::vector<ScanStep>& steps,
+                     const std::map<size_t, std::string>& preserved = {},
+                     const PioObservation& observe = {},
+                     const std::map<size_t, std::string>& caller_goals = {});
   // Raw scans target a known root route or disjoint accessible child
   // intervals, or a known-binary IR/full-path DR on one bound root
   // client-TAP. An ordinary queue may prepare a modeled client before its

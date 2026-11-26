@@ -38,6 +38,7 @@ inline std::string StatusClearNoteText(const std::string& count) {
   return std::string(kStatusClearNote) + count;
 }
 // The netlist must outlive this append-only, single-runtime session.
+bool CanUsePrimaryCallbackReadback(const Netlist& netlist);
 // Replay follows supplied operation order; observed merges must retain it.
 Runtime::Readback MakeModeledReadback(const Netlist& netlist);
 Runtime::Readback MakeModeledReadback(const Netlist& netlist, bool physical);

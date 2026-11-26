@@ -164,7 +164,7 @@ iNote [iGetStatus -clear]; iNote [iGetStatus]
  DataRegister dest[3:0] {WriteDataSource value; WriteEnSource 1'b1;}
  Alias low''')
         timed = PROCS.replace(' iRead q $data', ' iRunLoop 1 -tck; iRead q $data')
-        cases = [(automatic, PROCS+'iWrite dest 9; iApply\n', (), 'callback'),
+        cases = [(automatic, PROCS+'iWrite dest 9; iApply\n', (), 'cannot justify primary-input'),
                  (MODEL, timed+'iRead observed 0; iApply; iGetReadData q\n', (), 'histories'),
                  (MODEL, PROCS+'iRead observed 0; iApply\n', ('--physical_pdl',), 'physical')]
         for source, body, extra, expected in cases:

@@ -1014,6 +1014,7 @@ int main(int argc, char** argv) {
     runtime.Finish();
     if (runtime.CallbacksExecuted()) {
       if (options.model_readback &&
+          !pattern::CanUsePrimaryCallbackReadback(network.netlist) &&
           std::any_of(runtime.operations().begin(), runtime.operations().end(),
                       [](const auto& operation) {
                         return operation.callback_prerequisite;

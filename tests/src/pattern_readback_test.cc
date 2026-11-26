@@ -744,6 +744,62 @@ Module Top {
   Require(readback(operations, false)->failures == 0,
           "callback endpoint status remains cleared");
 }
+void TestAutomaticPrimaryActualReadback() {
+  pattern::Design design;
+  design.AddIcl("automatic-primary.icl", R"(
+Module Top {
+ DataInPort en; DataInPort p[3:0];
+ DataRegister value[3:0] {WriteCallBack Top store <D>; ResetValue 0;}
+ DataRegister dest[3:0] {WriteDataSource value; WriteEnSource en; ResetValue 0;}
+ DataOutPort endpoint[3:0] {Source p;}
+ DataOutPort q[3:0] {Source dest;}
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::Runtime::StatusReadback status;
+  const auto readback = pattern::MakeModeledReadback(netlist, false, &status);
+  std::vector<pattern::Operation> operations{
+      {"iReset", {}, "test", {}},
+      {"iWrite", {"en", "0"}, "callback", {}},
+      {"iWrite", {"p", "13"}, "callback", {}},
+      {"iApply", {}, "callback", {}},
+      {"iState", {"value", "13"}, "callback", {}},
+      {"iWrite", {"dest", "13"}, "test", {}},
+      {"iApply", {}, "test", {}},
+      {"iRead", {"endpoint", "0"}, "test", {}},
+      {"iRead", {"q", "0bx"}, "test", {}},
+      {"iApply", {}, "test", {}}};
+  operations[2].callback_prerequisite = true;
+  Require(
+      status(operations) == 3,
+      "status preview counts actual endpoint care, ignoring unknown no-care");
+  const auto* update = readback(operations, true);
+  Require(update->failures == 3 && update->bits.size() == 8,
+          "automatic callback readback publishes both actual output histories");
+  for (const auto& bit : update->bits) {
+    if (bit.node == netlist.node_ids.at("q")) {
+      Require(bit.read == 'x' && bit.miscompare == '0',
+              "planned callback value never supplies actual downstream data");
+    } else {
+      const char expected = bit.index == 1 ? '0' : '1';
+      Require(bit.node == netlist.node_ids.at("endpoint") &&
+                  bit.read == expected && bit.miscompare == expected,
+              "actual primary input supplies endpoint comparison");
+    }
+  }
+  Require(readback(operations, false)->failures == 0 &&
+              readback(operations, false)->bits.empty(),
+          "automatic actual observations publish once and clear once");
+  operations.push_back({"iReset", {}, "test", {}});
+  operations.push_back({"iRead", {"q", "0"}, "test", {}});
+  operations.push_back({"iApply", {}, "test", {}});
+  update = readback(operations, false);
+  Require(
+      update->failures == 0 && update->bits.size() == 4,
+      "reset restores actual downstream storage without stale planning data");
+  for (const auto& bit : update->bits) {
+    Require(bit.read == '0', "actual reset value is observed");
+  }
+}
 void TestCallbackHistoryBoundary() {
   pattern::Design design;
   design.AddIcl("callback-history.icl", R"(
@@ -1267,6 +1323,7 @@ int main() {
     TestRawObservationCommit();
     TestRawTapObservationCommit();
     TestCallbackResetRetainsActualModelReadback();
+    TestAutomaticPrimaryActualReadback();
     TestCallbackHistoryBoundary();
     TestReadModel();
     TestModeledReadback();

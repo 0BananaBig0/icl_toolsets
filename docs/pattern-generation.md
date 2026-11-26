@@ -11021,3 +11021,119 @@ existing gate receipt by equality rather than rewriting it.
 All37 Task184 merged-result checks pass against identical4,087qualified inputs
 and23copied executables. Master is pushed, the owned task branch is deleted,
 and117stashes remain. Broader inventory work remains open.
+
+## Automatic primary callback observations (Task185)
+
+With `--model_readback`, automatic write callbacks now support primary-only
+networks containing native DataRegister writes. The callback's last-written
+value guides planning, while actual native input events determine observations.
+A callback assumption is not device data: downstream storage loaded from an
+unmodeled callback remains unknown, even when the callback intent is known.
+
+Save this as automatic-primary.icl:
+
+~~~icl
+Module Chains {
+ DataInPort en; DataInPort p[3:0];
+ DataRegister value[3:0] {WriteCallBack Chains store <D> <R>; ResetValue 0;}
+ DataRegister dest[3:0] {WriteDataSource value; WriteEnSource en; ResetValue 0;}
+ DataOutPort endpoint[3:0] {Source p;}
+ DataOutPort q[3:0] {Source dest;}
+}
+~~~
+
+Save this as automatic-primary.pdl; run with `--top_module Chains` and
+`--model_readback`:
+
+~~~tcl
+iPDLLevel 1
+iProcsForModule Chains
+iProc store {data reg} {iWrite en 0; iWrite p $data}
+iReset; iWrite dest 13; iApply
+iRead endpoint 0; iRead q 0bx; iApply
+iNote [iGetReadData endpoint -bin]
+iNote [iGetMiscompares endpoint -bin]
+iNote [iGetReadData q -bin]
+iNote [iGetMiscompares q -bin]
+iNote [iGetStatus]; iNote [iGetStatus -clear]; iNote [iGetStatus]
+~~~
+
+Actual endpoint data and mismatch bits are `0b1101`; actual downstream data is
+`0bxxxx`, with `0b0000` mismatch bits because that read has no cared bits.
+Status returns3, clears returning3, then returns0. A cared read of unknown data
+keeps status unknown; a failed clear cannot turn it into zero. Generated PDL
+and flattened ICL preserve these results. Ordinary informational notes remain
+informational; this support introduces no callback-value observation annotation.
+
+Actual unknown read-route selectors and unprovable held-storage preservation
+still reject. TAPs, scan objects/interfaces, AccessLinks, clocks, physical PDL
+and broader timed/serial automatic callback observations remain outside this
+bounded path, including programs without getters. It provides software model
+observations, not a live-device transport or timing certificate.
+
+Reproduce the representative scale matrix with normal, frozen-parent and
+sanitizer binaries:
+
+```sh
+python3 tests/src/pattern/benchmark_automatic_primary_readback.py \
+  --binary /path/to/current-generator --parent /path/to/parent-generator \
+  --sanitized /path/to/sanitized-generator --output /tmp/automatic-primary-matrix
+```
+
+The parent control uses its real default automatic callback hardware generation;
+it cannot provide the newly supported modeled observations. The benchmark
+checks actual endpoint/unknown downstream data, comparison masks and ordered
+status clearing, then compares remaining hardware bytes to that parent control.
+Candidate source, flat and generated forms must match exactly. It covers
+1/2/8lanes at8/32bits,1/2at64bits and1at256bits, with three
+repeats and sanitizer samples inside existing primary-input limits. The limits
+remain10s/512MiB, or256MiB for a single wide lane. No unmeasured speedup or
+global scheduling optimum is claimed.
+
+Larger independent-callback workloads remain limited by the existing planner.
+Initial32-lane sequential parent controls exceeded10seconds; batched32-lane
+and two1,024-bit callback controls reached the existing solver/time guards.
+Shared-source alternatives also hit those guards. These exploratory failures
+are retained separately and are not passing measurements or support promises.
+The qualified matrix measures successful bounded workloads; larger callback
+planning remains original item10 work. No solver limit was increased.
+
+The new matrix records `ASAN_OPTIONS=detect_leaks=1:quarantine_size_mb=128`.
+Normal exploratory measurements peak below157MiB; default sanitizer allocation
+retention peaks at593MiB and exceeds512MiB. The128MiBquarantine probe returns
+identical bytes at415MiB. This is an explicit sanitizer environment choice,
+not a production memory reduction; functional sanitizer suites retain their
+default quarantine. No memory guarantee is claimed for unconfigured sanitizers.
+
+Pre-review compatibility correction: collect primary read-route provenance only
+when the existing observation callback requests it. The bounded callback
+planner explicitly requests provenance and discards planned observation values;
+ordinary generation avoids unused route allocations. A native test fails on
+unwanted ordinary metadata, then passes. The retained64-callback mixed benchmark
+previously reached524744KiB against524288KiB; after the correction its11default
+SAN measurements pass at519652KiB maximum, with identical functional results.
+The initial attribution to extra planning state was disproved: that explicit
+callback fixture has no native WriteDataSource, so the bounded path is inactive.
+The final scheduler change invalidates earlier products; all118qualification
+gates are now rerun fresh, including both91suite/1464method generator variants.
+Earlier attempted same-task reuse is historical evidence, not final reuse.
+
+All118final qualification gates pass fresh after the metadata-allocation fix;
+no earlier gate or partial generator result is reused. Normal and static
+generators each pass91suites/1464methods. All30native normal/SAN suites,
+2static-native suites,21changed-C++quality checks and source packaging pass.
+The default-SAN mixed-callback compatibility suite passes17methods.
+
+The artifact validator verifies4090input/42product hashes,2577maintained
+timing/RSS rows including555live generated-history runs,32guide processes
+and2allocation probes. Allocation counts are56/56with zero root-width growth.
+The unchanged source audit retains1032canonical models,44explicit unsupported
+models,687default elaboration failures and2562source identities.
+Across those2577measured rows, maximum wall time is6.7360s and peak RSS470628KiB.
+The new135-run automatic matrix peaks at6.7360s/405740KiB under its documented
+sanitizer configuration. Current forms preserve exact hardware bytes against
+the immediate parent's default automatic generation; retained named-history
+controls use their original frozen pre-feature binary. No physical transport,
+unconfigured sanitizer budget or larger planner-scale completion is claimed.
+Independent final review is pending; excluded1,36inherited deferred Minors and
+broader original inventory requirements remain open.
