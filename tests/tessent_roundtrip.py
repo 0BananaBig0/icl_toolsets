@@ -4,6 +4,7 @@ import argparse
 import copy
 import hashlib
 import json
+import re
 from pathlib import Path
 import subprocess
 import tempfile
@@ -60,6 +61,41 @@ def regenerate(directory, job, case, direction, generator):
     return directory / 'flat.pdl'
 
 
+def verify_execution(job, directory, suffix=''):
+    icl = (['design.icl'] if job.get('icl_origin') else
+           [f'design_{i}.icl' for i in range(len(job['icl']))])
+    expected = oracle.tessent_script(job['top'], icl, job['tessent_pdl_inputs'],
+                                    'model.bsdl' if job.get('bsdl') else None,
+                                    job.get('export_testbench', False))
+    if oracle.input_path(directory, 'run.tcl' + suffix).read_text() != expected:
+        raise ValueError('changed certified vendor execution inputs')
+
+
+def verify_reference(reference, case, job, vendor):
+    try:
+        prior, artifacts = reference['job'], reference['artifacts']
+        current_pdl, prior_pdl = job['tessent_pdl_inputs'], prior['tessent_pdl_inputs']
+        valid = (reference['schema'] == 3 and reference['policy'] == POLICY
+                 and reference['direction'] == 'forward' and reference['case'] == case
+                 and reference['source_hashes'] == job['source_hashes'] == prior['source_hashes']
+                 and prior['top'] == case['top'] and prior['status'] == 'reference_pass'
+                 and prior['outcome'] == 'ok' and prior['exit_code'] == 0
+                 and 'Tessent Shell ' in prior['version']
+                 and set(artifacts) == {'flat.pdl', 'vendor.pdl'}
+                 and prior['result_sha256'] == artifacts['vendor.pdl']
+                 and len(current_pdl) == len(prior_pdl) == 1
+                 and job['inputs'][current_pdl[0]] == artifacts['flat.pdl']
+                 and prior['inputs'][prior_pdl[0]] == artifacts['flat.pdl']
+                 and reference['trace'] == vendor and vendor['binding'] == case['top']
+                 and all(re.fullmatch(r'[0-9a-f]{64}', value) for value in (
+                     reference['binary_sha256'], reference['vendor_console_sha256'],
+                     artifacts['flat.pdl'], artifacts['vendor.pdl'])))
+    except (KeyError, TypeError):
+        valid = False
+    if not valid:
+        raise ValueError('changed previously certified reference input/provenance/trace')
+
+
 def record(root, bundle, case_id, direction, output, trace, generator, source_bundle=None):
     if direction not in DIRECTIONS:
         raise ValueError('invalid round-trip direction')
@@ -100,18 +136,13 @@ def record(root, bundle, case_id, direction, output, trace, generator, source_bu
             raise ValueError('changed source case definitions')
         source_job, source_directory = golden.verified_job(
             root, source_bundle, source_report, source_prepared, case, case_id)
+        verify_execution(job, directory)
+        verify_execution(source_job, source_directory)
         source_reference = source_prepared.get('reference_certificates', {}).get(case_id)
         if source_reference is not None:
-            if (source_report.get('reference_certificates') != source_prepared['reference_certificates']
-                    or source_reference.get('schema') != 3 or source_reference.get('policy') != POLICY
-                    or source_reference.get('direction') != 'forward'
-                    or source_reference['case'] != case
-                    or source_reference['source_hashes'] != source_job['source_hashes']
-                    or len(source_job['tessent_pdl_inputs']) != 1
-                    or source_job['inputs'].get(source_job['tessent_pdl_inputs'][0])
-                    != source_reference['artifacts']['flat.pdl']
-                    or source_reference['trace'] != vendor):
+            if source_report.get('reference_certificates') != source_prepared['reference_certificates']:
                 raise ValueError('changed previously certified reference input/trace')
+            verify_reference(source_reference, case, source_job, vendor)
         if (source_job['top'] != job['top']
                 or (source_reference is None and source_job['tessent_pdl_inputs'] != [
                     f'source_{i}.pdl' for i in range(len(case['pdl']))])):
@@ -193,15 +224,7 @@ def check(root, snapshot, generator, trace):
         source_job = cert['source_job']
         source_reference = cert.get('source_reference')
         if source_reference is not None:
-            if (source_reference.get('schema') != 3 or source_reference.get('policy') != POLICY
-                    or source_reference.get('direction') != 'forward'
-                    or source_reference['case'] != case
-                    or source_reference['source_hashes'] != cert['source_hashes']
-                    or len(source_job['tessent_pdl_inputs']) != 1
-                    or source_job['inputs'].get(source_job['tessent_pdl_inputs'][0])
-                    != source_reference['artifacts']['flat.pdl']
-                    or source_reference['trace'] != cert['trace']):
-                raise ValueError('changed previously certified reference input/trace')
+            verify_reference(source_reference, case, source_job, cert['trace'])
         if (source_job['top'] != case['top']
                 or source_job['source_hashes'] != cert['source_hashes']
                 or source_job['result_sha256'] != cert['artifacts']['source_vendor.pdl']
@@ -222,6 +245,9 @@ def check(root, snapshot, generator, trace):
         raise ValueError('changed certified reverse input')
     golden.verify(snapshot, {n + '.expected': h for n, h in cert['artifacts'].items()})
     golden.verify(snapshot / 'inputs', {n + '.expected': h for n, h in job['inputs'].items()})
+    if source_equivalence:
+        verify_execution(job, snapshot / 'inputs', '.expected')
+        verify_execution(source_job, snapshot / 'source_inputs', '.expected')
     with tempfile.TemporaryDirectory(prefix='icl-roundtrip-check-') as temp:
         work = Path(temp)
         for name in job['inputs']:

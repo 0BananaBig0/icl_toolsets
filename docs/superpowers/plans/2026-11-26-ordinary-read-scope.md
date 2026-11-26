@@ -77,11 +77,11 @@ logical bits;no event or actual observation is inferred from a desired value.
 - [x] Step5: Reconcile current guidance,read the selected patch,commit and run
   completion contract. Expected: all required checks and claims agree.
 
-Implementation verification: python3 /tmp/ordinary-read-scope-check.py
+Implementation verification: python3 /tmp/ordinary-read-scope-postreview-check.py
 
 ## Branch review and integration
 
-- [ ] Obtain one fresh final review;grade every finding/declined area;fix blockers once.
+- [x] Obtain one fresh final review;grade every finding/declined area;fix blockers once.
 - [ ] Merge,verify merged result,push,detach/delete owned branch,archive own ledger.
 
 Self-review:one read-lowering deliverable with shared helper and affected
@@ -107,3 +107,10 @@ its generator command records preparation,while source_reference identifies the
 actual prior program and generator. Completed native/SAN/scale checks may be
 reused only with unchanged source and product hashes. Preserve all failed full
 runs;run the changed contract tests and a fresh full make check.
+
+Post-review provenance repair:bind both fresh jobs' declared inputs to their
+preserved canonical vendor execution scripts. Validate previous schema3 generator/
+console hashes and consistent successful job,input,artifact,case/source and trace
+bindings. Two maintained mutation methods require failure before the fix and
+pass afterward;both original source and certified-program reference modes remain
+supported. No C++ or vendor fixture changes,no second review.

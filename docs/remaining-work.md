@@ -1731,13 +1731,13 @@ Exact raw/physical masks and documented implicit instruction-capture checks keep
 their contract. Independent native old-output/controller/final-state assertions
 remain;merge tests now expect exact slices and retain ordering/byte replay.
 
-All61qualification commands pass,including9C++quality checks,15leak-enabled
+All63post-review qualification commands pass,including9C++quality checks,15leak-enabled
 sanitizer native suites,15new functional methods,23client,12mixed-TAP and20older
 multi-TAP methods,seven affected sanitizer modules,20merge-observation methods and four changed
 DataRegister/scan-data/mixed-I/O consumer modules plus the13-method partial
 AccessTogether group contract.
-Full make check passes:219Python suites report3381tests with5optional ANTLR skips.
-Both16-method normal/static focused suites,12round-trip certification methods,
+Full make check passes:219Python suites report3383tests with5optional ANTLR skips.
+Both16-method normal/static focused suites,14round-trip certification methods,
 source packaging and corpus audits pass. Manifests bind4121inputs/44executables.
 The model audit remains1032canonical/44unsupported/687default elaboration failures.
 
@@ -1777,4 +1777,12 @@ requested d history and asserting incidental observer histories remain unknown.
 An equally preferred-route case checks logical value000 and unknown q0/q1 histories.
 The71remaining-module collection preserves five original failures;fresh focused
 normal/SAN checks verify those five repairs,with66unchanged modules passing.
-Final independent review and integration are pending.
+One independent review found0Critical/1Important/0Minor findings. One test-first
+repair pass rejects false vendor-input attribution and missing/inconsistent prior
+certificate provenance:two maintained methods reproduce10accepted mutations
+before the repair,then all14certificate methods pass. Both record and offline
+checks bind declared execution to the preserved canonical vendor Tcl script.
+All five actual-run recertifications produce byte-identical stored snapshots.
+The checker/test changes preserve all C++ and vendor input/output hashes;57
+unaffected checks are reused under exact hash proof,with fresh full regression
+and packaging. No rereview occurred;31inherited Minors remain. Integration is pending.

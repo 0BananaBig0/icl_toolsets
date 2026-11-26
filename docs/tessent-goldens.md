@@ -787,3 +787,10 @@ Independent original-source schedules may differ. The queued-state original
 still rejects pending `iState`; these refreshes certify generated exports and
 make no new claim that Tessent accepts that source. See
 [Task190 evidence and limits](remaining-work.md#task190-ordinary-logical-read-scope).
+
+Schema4 record and offline checks reconstruct the canonical vendor execution
+script from the recorded top,ordered ICL/PDL inputs,BSDL and testbench setting,
+and compare it with the preserved `run.tcl`. Declared original-source input
+metadata cannot relabel a run that actually executed a generated program. Prior
+certificates require generator and vendor-console hashes plus consistent case,
+source,successful vendor-job,input,artifact and ordered-trace bindings.
