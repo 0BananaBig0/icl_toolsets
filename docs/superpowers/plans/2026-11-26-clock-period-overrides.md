@@ -73,5 +73,5 @@ its recursive local-reset call. No public CLI switch.
 
 - [x] One fresh whole-branch review, grading every finding and declined area;
   one Critical/Important test-first repair pass plus a green full suite; defer Minors.
-- [ ] Merge into parent master, verify merged identity and focused checks,
+- [x] Merge into parent master, verify merged identity and focused checks,
   push and delete only this owned branch; archive only this task ledger.
