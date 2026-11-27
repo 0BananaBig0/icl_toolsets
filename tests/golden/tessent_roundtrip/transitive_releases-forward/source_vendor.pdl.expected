@@ -1,0 +1,28 @@
+iProcsForModule ResetAccessTop
+
+iProc oracle {} {
+
+   iReset
+   iWrite tap.INSTRUCTION[3:0] 0b0011
+   iRead  tap.INSTRUCTION[3:0] 0b0001
+   iApply
+
+   iWrite core.gate 0b0
+   iWrite core.root 0b1
+   iRead  core.branch.release
+   iApply
+
+   iWrite core.gate 0b1
+   iWrite core.root 0b1
+   iWrite core.branch.release 0b1
+   iApply
+
+   iWrite core.gate 0b0
+   iWrite core.root 0b1
+   iWrite core.branch.release 0b1
+   iWrite core.a.value[3:0] 0b1010
+   iWrite core.b.value[3:0] 0b0011
+   iApply
+
+
+}

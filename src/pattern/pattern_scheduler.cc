@@ -7318,11 +7318,8 @@ class ScanScheduler::Impl {
         if (group.read) client_read_groups.emplace(key, std::move(owners));
       }
     }
-    const bool scoped_reads = !physical && !permitted_tap_data &&
-                              std::any_of(operations.begin(), operations.end(),
-                                          [](const auto& operation) {
-                                            return operation.command == "iRead";
-                                          });
+    // Write-only applies must not expose incidental captures as logical reads.
+    const bool scoped_reads = !physical && !permitted_tap_data;
     std::set<Key> read_scope;
     if (scoped_reads) {
       for (const auto& operation : operations) {

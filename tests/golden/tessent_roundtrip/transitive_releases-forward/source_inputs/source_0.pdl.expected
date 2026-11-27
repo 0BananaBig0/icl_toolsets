@@ -1,0 +1,10 @@
+iPDLLevel 1
+iProcsForModule ResetAccessNetwork
+iProc configure {value} {
+    iWrite a.value $value
+    iWrite b.value 3
+    iApply
+}
+iProcsForModule ResetAccessTop
+iReset
+iCall core.configure 10

@@ -8,6 +8,7 @@ import time
 
 import test_multiple_client_interfaces as clients
 import test_simultaneous_client_interfaces as helpers
+from test_data_reset_dependencies import PENDING
 
 SCAN = '''Module Chains {
  ScanInPort si;
@@ -15,6 +16,11 @@ SCAN = '''Module Chains {
  ScanOutPort so {Source r[0];}
 }'''
 PRIMARY = 'Module Chains {DataInPort p[3:0]; DataOutPort q[3:0] {Source p;}}'
+RESET_SOURCE = PENDING.replace('ScanRegister r {', 'ScanRegister r[1:0] {').replace(
+    'CaptureSource r; ResetValue 0;', 'CaptureSource r; ResetValue 1;').replace(
+    'ScanOutPort so { Source r; } DataOutPort q { Source r; }',
+    'ScanOutPort so { Source r[0]; } DataOutPort q { Source r[0]; }')
+RESET_SETUP = 'iReset; iState enable 0; iState v 1; iState bus 0; iState a.r 3; '
 
 
 def cases():
@@ -32,6 +38,38 @@ class OrdinaryReadScope(unittest.TestCase):
         if icl == self.root / 'source.icl':
             extra = (*extra, *getattr(self, 'bsdl_models', ()))
         return helpers.SimultaneousClients.run_tool(self, icl, pdl, output, ok, extra)
+
+    def test_write_only_preparation_keeps_unrequested_history(self):
+        for previous in (None, '0', '0bxx'):
+            with self.subTest(previous=previous):
+                prefix = RESET_SETUP
+                if previous is not None:
+                    prefix += f'iRead a.r {previous}; iApply; iState a.r 1; '
+                prefix += 'iWrite bus 1; iApply;\n'
+                self.assert_prefix_notes(
+                    RESET_SOURCE, prefix,
+                    'iNote history=[iGetReadData a.r -bin]; '
+                    'iNote mismatch=[iGetMiscompares a.r -bin]; '
+                    'iNote status=[iGetStatus -clear]; iNote status=[iGetStatus];\n',
+                    [b'history=0bxx' if previous is None else b'history=0b11',
+                     b'mismatch=0bxx' if previous is None else
+                     b'mismatch=0b11' if previous == '0' else b'mismatch=0b00',
+                     b'status=2' if previous == '0' else b'status=0', b'status=0'])
+
+    def test_automatic_preparation_has_stable_regeneration(self):
+        icl, pdl = self.root / 'source.icl', self.root / 'prefix.pdl'
+        icl.write_text(RESET_SOURCE)
+        pdl.write_text('iPDLLevel 1; ' + RESET_SETUP + 'iRead q 1; iApply;\n')
+        for modeled in (False, True):
+            with self.subTest(modeled=modeled):
+                extra = ('--model_readback',) if modeled else ()
+                first = self.run_tool(icl, pdl, extra=extra)
+                self.assertNotIn(b'iRead a.r ', first)
+                self.assertIn(b'iWrite bus 0b1\niApply\n', first)
+                for model, program, name in (
+                        (self.root / 'debug/Chains.icl', pdl, 'flat/result.pdl'),
+                        (icl, self.root / 'result.pdl', 'again/result.pdl')):
+                    self.assertEqual(first, self.run_tool(model, program, name, extra=extra))
 
     def test_single_client_partial_read(self):
         self.assert_prefix_notes(clients.network(1),
