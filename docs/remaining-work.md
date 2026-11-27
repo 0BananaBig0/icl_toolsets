@@ -2745,7 +2745,18 @@ command passes 270 native processes and 16 parser calls with matching outputs
 and unchanged 10s/512MiB bounds. All 2617 canonical hashes remain unchanged.
 All 4135 qualified inputs and 48 products remain identical; broader native
 qualification remains historical. Source build/install and exact four-member
-package checks follow in the receipt. One inherited finding is a candidate
-closure; 25 findings remain pending independent review and integration.
+package checks follow in the receipt. The inherited cleanup finding is resolved.
+The sole independent review found 0 Critical, 0 Important and 1 new Minor
+issues; 26 findings remain deferred. Integration results follow below.
 Evidence: `build/clock-replay-cleanup-20261128/`. Broader inventory and excluded
 coverage item1 remain open.
+
+Task211 is merged and pushed to `master` as `23c65a2`. All seven qualification
+gates and three merged-result checks pass on identical 4135 inputs, 48 products
+and four package members. The fault probes preserve original exceptions and
+available scratch diagnostics; the default 270-process native replay and
+16 parser calls pass. All 117 stashes are preserved. The owned branch is
+retired; guide, probes, raw replay, source archive, review and ledger remain
+under `build/clock-replay-cleanup-20261128/`. The reusable detached worktree and
+sibling ledgers remain available. Broader inventory and excluded coverage item1
+remain open.

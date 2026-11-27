@@ -28,6 +28,12 @@ canonical evidence. No broad file cleanup or archived-driver changes.
 
 - [x] Protect parent identities and guide bytes. Write mirrored lifecycle probes, run old command and observe both real active files left behind. Archive leaked source and clean only each probe's owned path. Expected: two assertion failures, no test setup errors.
 - [x] Add the smallest try/finally change. Both lifecycle probes and both optimization preflight checks pass. Run the full published normal command and optimized rejection; preserve exact native outputs and canonical hashes. Archive mirrored test sources before packaging.
-- [ ] Record verified scope and run source build/install, exact four-member package checks, identities and whitespace. Read selected diff, commit under grouped policy and run task-done with tests/.task211-check.py.
-- [ ] One fresh final review; regrade findings, one Critical/Important repair wave if needed, no rereview; defer Minors.
-- [ ] Merge master, verify merged artifacts/identities, push, archive only own ledger/helpers and retire the branch while retaining the detached worktree.
+- [x] Record verified scope and run source build/install, exact four-member package checks, identities and whitespace. Read selected diff, commit under grouped policy and run task-done with tests/.task211-check.py.
+- [x] One fresh final review; regrade findings, one Critical/Important repair wave if needed, no rereview; defer Minors.
+- [x] Merge master, verify merged artifacts/identities, push, archive only own ledger/helpers and retire the branch while retaining the detached worktree.
+
+Completed at `c1f2cd9`, merged and pushed as `23c65a2`. Independent review:
+0 Critical, 0 Important, 1 new Minor issues. One inherited resolution and
+26 remaining findings. Seven qualification gates and three merged-result
+checks pass; 117 stashes preserved. Evidence:
+`build/clock-replay-cleanup-20261128/`.
