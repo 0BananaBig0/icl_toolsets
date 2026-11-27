@@ -2545,3 +2545,33 @@ qualified source archive, review, ledger and helper copies remain under
 `build/period-diagnostic-edits-20261128/`. The reusable detached worktree and
 sibling ledgers remain available. Broader inventory and excluded coverage item1
 remain open.
+
+
+## Task207 callback benchmark postconditions
+
+The shared benchmark pass now checks exact serialized callback target/value
+pairs and their number of completed nonempty physical Apply frames. Empty
+logical Applies preserve explicit controls. Returned metrics and physical
+frame tuples stay unchanged; the merged wrapper reuses this guarantee and
+drops its duplicate output scan. These are logical postconditions, not actual
+device observations. No producer or execution semantics change.
+
+Four literal metatest methods include unused and empty-Apply positives plus
+payload/name/early/late corruptions. The old checkers accept six of eight
+corrupted outcomes; the new checkers reject all eight. The maintained test is
+wired into pattern-scheduler-check. Actual current fixtures remain green.
+
+All three existing three-repeat matrices pass: 228 native CLI processes,
+plus 24 static source/flat/generated forms and the 256-target model-evaluation
+counter. Existing 10s/512MiB regular and 10s/256MiB wide caps hold. All 48
+products remain unchanged; parent/current roles use the same qualified engine,
+so no speedup or simultaneous maximum-size claim is made. Exact commands,
+inputs, outputs, counters and memory/time reports are retained. Source
+build/install and final identities follow in the qualification receipt:
+4134 inputs, one added metatest and three modified existing files, with 4130
+unchanged. Unrelated C++/frontend/native-event/vendor suites are not rerun.
+
+Two inherited findings are addressed; the candidate remainder is 30 minus 2
+= 28. Independent review and integration remain pending. Evidence:
+`build/callback-postconditions-20261128/`. Broader inventory and excluded
+coverage item1 remain open.

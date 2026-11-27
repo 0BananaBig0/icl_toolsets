@@ -48,7 +48,8 @@ iReset
 
 def physical_counts(text, targets, width, invoked):
     frames, pending, notes = [], [], []
-    postconditions = low = high = endpoints = empty = 0
+    postconditions = []
+    low = high = endpoints = empty = 0
     callback_names = {"r%d" % index for index in range(targets)}
     for line in text.splitlines():
         words = line.split()
@@ -73,7 +74,7 @@ def physical_counts(text, targets, width, invoked):
             if (len(words) != 3 or words[1] not in callback_names or
                     not words[2].startswith("0b") or len(words[2]) != width + 2):
                 raise RuntimeError("unexpected callback postcondition: " + line)
-            postconditions += 1
+            postconditions.append((words[1], words[2], len(frames)))
         elif command == "iApply":
             if pending:
                 frames.append(pending)
@@ -86,10 +87,12 @@ def physical_counts(text, targets, width, invoked):
             raise RuntimeError("unexpected output command: " + line)
     if pending:
         raise RuntimeError("unapplied physical writes")
-    expected_notes = [
-        "r%d=0b%s" % (index, format(value, "0%db" % width))
+    expected_postconditions = [
+        ("r%d" % index, "0b" + format(value, "0%db" % width),
+         (value - 1) * (targets + 1) + index + 1)
         for value in range(1, 5) for index in range(targets)] if invoked else []
-    if notes != expected_notes or postconditions != len(expected_notes):
+    expected_notes = [name + "=" + value for name, value, _ in expected_postconditions]
+    if notes != expected_notes or postconditions != expected_postconditions:
         raise RuntimeError("callback arguments/order/postconditions differ")
     expected_frames = []
     for value in range(1, 5):
@@ -105,7 +108,7 @@ def physical_counts(text, targets, width, invoked):
             "enable_high_writes": high,
             "destination_writes": high * targets,
             "logical_callback_events": len(notes),
-            "callback_postconditions": postconditions,
+            "callback_postconditions": len(postconditions),
             "csu_count": 0, "shifted_bits": 0,
             "pio_only_verified": True}, frames
 
