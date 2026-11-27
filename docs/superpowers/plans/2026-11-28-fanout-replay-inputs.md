@@ -30,9 +30,15 @@ extend only when current inspection identifies an actual uncovered interface.
 - [x] Iterate longest_lanes when assembling ordinary replay inputs, one assignment per (node,index)/tick. Run the instrumented benchmark GREEN with matching reference PDL. Keep the duplicate map until that GREEN is observed.
 - [x] Remove the redundant input_streams comparison as a green refactor. Verify final instrumented counts, three equivalent current scale runs, focused normal/static fanout/shared-input/output modules, C++17/style/tidy and actual source/vector coverage before freezing.
 - [x] Run fresh whole-project normal/static qualification with its normal native suites, default leak-enabled native and affected CLI checks, source build/install and exact manifests. Run applicable timed probes before concurrent broad regression; no duplicate full baseline or native suites already covered by the whole run.
-- [ ] Mark verified implementation progress, read the complete selected patch, commit with grouped policy and run task-done using tests/.task208-check.py.
+- [x] Mark verified implementation progress, read the complete selected patch, commit with grouped policy and run task-done using tests/.task208-check.py.
 
 ## Branch completion
 
-- [ ] One independent whole-branch review; regrade findings and declined areas, one Critical/Important RED-to-GREEN repair wave if needed, defer Minors without rereview.
-- [ ] Merge master, verify merged behavior and qualified identities, push, archive only this ledger/helpers, retire this branch and continue the original inventory.
+- [x] One independent whole-branch review; regrade findings and declined areas, one Critical/Important RED-to-GREEN repair wave if needed, defer Minors without rereview.
+- [x] Merge master, verify merged behavior and qualified identities, push, archive only this ledger/helpers, retire this branch and continue the original inventory.
+
+Completed at `eb3c90e`, merged and pushed as `6ad6ad4`. Independent review:
+0 Critical, 0 Important, 0 new Minor issues; one inherited resolution and
+27 remaining findings. All 44 qualification gates and eight merged-result
+checks pass; 117 stashes are preserved. Evidence:
+`build/fanout-replay-inputs-20261128/`.

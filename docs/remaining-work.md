@@ -2612,7 +2612,19 @@ checks and three C++ quality checks pass. Source build/install and final
 identities follow in the receipt: 4135 inputs, one added benchmark and two
 modified existing files, with 4132 unchanged; 48 qualified products.
 
-One inherited replay-work finding is a candidate closure; 27 findings remain
-pending independent review and integration. Evidence:
+The inherited replay-work finding is resolved. The sole independent review
+found 0 Critical, 0 Important and 0 new Minor issues; 27 findings remain
+deferred. Integration results follow below. Evidence:
 `build/fanout-replay-inputs-20261128/`. Broader inventory and excluded coverage
 item1 remain open.
+
+Task208 is merged and pushed to `master` as `6ad6ad4`. All 44 qualification
+gates and eight merged-result checks pass on identical 4135 inputs, six required
+package members and 48 qualified products. Six merged Python reports contain
+76 tests. One concurrent sanitizer solver timeout is retained;
+the unchanged complete module passes in isolation with original flags and
+limits. All 117 stashes are preserved. The owned branch is retired; its
+qualified source archive, work probes, review, ledger and helper copies remain
+under `build/fanout-replay-inputs-20261128/`. The reusable detached worktree and
+sibling ledgers remain available. Broader inventory and excluded coverage item1
+remain open.
