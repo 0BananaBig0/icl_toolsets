@@ -4106,6 +4106,114 @@ void TestClockPeriodOverrideSnapshots() {
           "missing intrinsic period rejects restoration without publishing "
           "output, definitions or hardware state");
 }
+void TestClockProgramComponents() {
+  pattern::Design design;
+  design.AddIcl("clock-components.icl", R"(Module Top {
+    ClockPort root[7:6]; ClockPort spare; DataInPort mode;
+    ClockMux choose[5:4] SelectedBy mode {1'b0:root;1'b1:root;}
+    ToClockPort out[5:4] {Source choose; FreqMultiplier 3; FreqDivider 2;}
+    ToClockPort shared {Source root[7];}
+    ToClockPort anchor {Period 7ns;}
+    ToClockPort isolated[65535:0] {Period 10ns;}
+  })");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::ScanScheduler scheduler(netlist);
+  z3::context context;
+  const pattern::Operation period{"iClockOverride",
+                                  {"isolated(32768)", "-period", "20ns"},
+                                  "component:1",
+                                  {}};
+  const pattern::Operation partial{
+      "iClockOverride", {"out(4)", "-freqDivider", "5"}, "component:2", {}};
+  pattern::SystemClocks future(netlist);
+  future.RetainClockPrograms({period,
+                              partial,
+                              {"iClockOverride",
+                               {"out(4)", "-source", "spare"},
+                               "component:future",
+                               {}}});
+  Require(!future.RetainsClockProgram("out(4)") &&
+              future.Check("spare", scheduler) == "spare" &&
+              future.Wait("spare", 1, scheduler,
+                          {{netlist.node_ids.at("out"), "x0"}}) ==
+                  std::make_pair(std::string("spare"), uint64_t{1}) &&
+              scheduler.Value("mode") == "x",
+          "future source edges classify components without activating unknown "
+          "selector routes or changing live resources");
+  scheduler.Assume("mode", "0");
+  std::vector<pattern::Operation> program{
+      period,
+      {"iClockOverride", {"shared", "-period", "25ns"}, "component:3", {}},
+      partial,
+      {"iClockOverride",
+       {"out(5)", "-source", "root(7)", "-freqMultiplier", "3", "-freqDivider",
+        "2"},
+       "component:4",
+       {}},
+      {"iClockOverride", {"missing", "-bad"}, "component:invalid", {}}};
+  pattern::SystemClocks clocks(netlist);
+  clocks.Check("out(4)", scheduler);
+  clocks.RetainClockPrograms(program);
+  Require(!clocks.RetainsClockProgram("out(4)") &&
+              !clocks.RetainsClockProgram("root(6)") &&
+              clocks.RetainsClockProgram("out(5)") &&
+              clocks.RetainsClockProgram("root(7)") &&
+              clocks.RetainsClockProgram("isolated(0)") &&
+              clocks.RetainsClockProgram("isolated(32768)") &&
+              clocks.RetainsClockProgram("missing") &&
+              clocks.Wait("out(4)", 6, scheduler) ==
+                  std::make_pair(std::string("root(6)"), uint64_t{4}),
+          "sparse per-bit policy preserves old checks, unrelated wide roots "
+          "and deferred operand validation");
+  auto copy = clocks;
+  clocks.Override(partial, context);
+  Require(clocks.Wait("out(4)", 6, scheduler).second == 4 &&
+              clocks.Check("out(4)", scheduler) == "root(6)" &&
+              clocks.Wait("out(4)", 6, scheduler).second == 10,
+          "ordinary component updates retain old and freshly checked ratios");
+  program.push_back({"iClockOverride",
+                     {"shared", "-source", "out(4)"},
+                     "component:bridge",
+                     {}});
+  copy.RetainClockPrograms(program);
+  Require(copy.RetainsClockProgram("out(4)") &&
+              !clocks.RetainsClockProgram("out(4)") &&
+              copy.Wait("out(4)", 6, scheduler).second == 4,
+          "future source bridges retain the whole connected component without "
+          "changing another clock-state copy");
+  pattern::Operation normalized;
+  normalized.arguments = {"sentinel"};
+  bool rejected = false;
+  try {
+    copy.Override(partial, context, &normalized);
+  } catch (const std::runtime_error& error) {
+    rejected =
+        std::string(error.what()).find("representable") != std::string::npos;
+  }
+  Require(rejected &&
+              normalized.arguments == std::vector<std::string>({"sentinel"}) &&
+              copy.Check("out(4)", scheduler) == "root(6)" &&
+              copy.Wait("out(4)", 6, scheduler).second == 4 &&
+              scheduler.Value("mode") == "0",
+          "connected normalization failures preserve definitions, output and "
+          "hardware after policy preparation");
+  program.pop_back();
+  program.push_back({"iClockOverride",
+                     {"out(4)", "-source", "anchor"},
+                     "component:anchor-source",
+                     {}});
+  program.push_back({"iClockOverride",
+                     {"anchor", "-freqDivider", "5"},
+                     "component:anchor-partial",
+                     {}});
+  copy.RetainClockPrograms(program);
+  Require(
+      copy.RetainsClockProgram("anchor") &&
+          copy.RetainsClockProgram("out(4)") &&
+          !clocks.RetainsClockProgram("out(4)"),
+      "unsupported neighboring partial defaults retain component validation "
+      "without changing another prepared copy");
+}
 void TestClockOverrideScale() {
   std::string source =
       "Module Stage { ClockPort ck; ToClockPort out { Source ck; } } "
@@ -7897,6 +8005,7 @@ int main(int argc, char* argv[]) {
         TestBoundDifferentialClocks();
         TestClockOverrideSnapshots();
         TestClockPeriodOverrideSnapshots();
+        TestClockProgramComponents();
         TestOscillatorSourceOverrides();
         return 0;
       }
@@ -7970,6 +8079,7 @@ int main(int argc, char* argv[]) {
     TestBoundDifferentialClocks();
     TestClockOverrideSnapshots();
     TestClockPeriodOverrideSnapshots();
+    TestClockProgramComponents();
     TestClockOverrideScale();
     TestRelativeSystemClocks();
     TestOscillatorWaits();

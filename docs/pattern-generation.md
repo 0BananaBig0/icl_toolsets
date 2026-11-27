@@ -11538,7 +11538,7 @@ and procedure return preserve this history. Hierarchical, indexed and associated
 flat names use the existing target mapping. Local-reset rendering uses the same
 preservation rule, including procedure groups preceding the first override.
 
-In a period-bearing program, source/ratio overrides emit explicit `-source`,
+In retained clock components, source/ratio overrides emit explicit `-source`,
 `-freqMultiplier` and `-freqDivider` fields. If `-source` is omitted, its ICL
 default must be a non-inverted ClockPort/ToClockPort bit. Omitted fields restore
 the ICL defaults on each native override, regardless of earlier overrides.
@@ -11664,3 +11664,83 @@ bringing the total to41. Task196 is merged and pushed to master as e9b66af.
 All nine merged-result checks pass on identical source/product identities; the
 task branch is deleted and117 stashes are preserved. Evidence:
 build/oscillator-default-restore-20261127/.
+
+### Independent clock programs (Task197)
+
+An independent ordinary clock route can use the existing root-relative lowering
+inside a period-bearing program. This handles partial overrides whose immediate
+ICL source is a ClockMux, alias or inverted clock signal. The route must have no
+connection to a period override through any source path or explicit source
+change anywhere in the program. Other components retain their logical clock
+statements. Previously accepted programs keep their existing output bytes.
+
+For example, suppose out has a mux source selecting root, with ICL multiplier 3
+and divider 2, while oscillator is a separate declared oscillator:
+
+    iState mode 0
+    iClockOverride oscillator -period 20 ns
+    iClockOverride out -freqDivider 5
+    iClock out
+    iRunLoop 6 -sck out
+
+The oscillator period statement remains. The independent out override lowers to
+`iClock root` and `iRunLoop 10 -sck root`, using the ICL multiplier 3 and requested
+divider 5. The model assumption made by iState must match the caller's known
+selector state. This change adds no device observation or clock-event engine.
+
+If a later source override connects oscillator to out, the component stays
+retained throughout the program. Its unrepresentable-source guard still applies;
+provide an explicit representable source. This preserves old checked versions
+and definitions used by other clock paths. Vector bits remain separate, and
+procedure/reset previews copy the prepared policy. Future source connections
+participate in analysis without becoming live resource connections.
+
+Both generators pass 28 period methods, including ordinary controls followed by
+the new mixed cases, per-bit hierarchy/procedure/reset replay, connected/future
+guards, output sentinels and unchanged complete-argument spelling. Native tests
+cover old/new root counts, independent policy copies, an unknown-selector held
+route and a sparse 65,536-bit oscillator declaration. Help assertions pass on
+both generators. The full frozen-source qualification passes.
+
+Three rounds cover 27 new matrix points and 18 matched parent/current ordinary
+controls: 45 points, 225 CLI processes and three Python runners. The matrix uses
+2/8/32 ordinary clock targets, 8/128/1024 partial updates and one independent
+retained oscillator. Each point meets 10 seconds/512 MiB; maxima are 0.368 seconds
+and 60,456 KiB runner/child RSS. Input/output bytes are captured before cleanup,
+and ordinary parent/current outputs are identical. Capture I/O and concurrent
+qualification are included; no isolated speedup is claimed.
+
+Six fresh sequential Tessent2026.2 jobs pass on mux, alias and inverted-source
+models. All three explicit-reference/generated pairs have identical full exports.
+Each literal trace has eight preplanned clock operations and the same observed
+three-command mode-initialization prefix: iWrite mode 0b0, iApply, iState mode
+0b0. References explicitly state native defaults and the known selected source;
+the old checked wait uses its explicit other-root count. These are configured
+original-model comparisons. Raw vendor omission semantics, standalone exported
+periods, phase and device timing remain unqualified. New measurement/comparison
+driver byte copies are stored beside their receipts and bound by hashes.
+All 39 qualification commands pass: 227 Python suite runs
+report 3,512 tests with five optional ANTLR skips. All 22 leak-enabled
+sanitizer checks and 12 changed-C++ quality checks pass, along with corpus,
+editor checks and source packaging. The manifest binds 4,125 inputs and
+44 executables. Full regression takes 1,808.929 seconds;
+packaging takes 66.805 seconds.
+Independent review found zero Critical, three Important and three Minor
+issues. One test-first repair pass preserves guarded neighboring partial
+defaults, restricts lowering to potentially clock-driven sources while
+preserving viable mux choices, and skips invalid non-single-bit operands
+without expanding their declarations. Four new CLI methods pass on both
+generators, including output sentinels, two 1,048,576-bit/2,048-operation
+cases and a 512-operation encoded whole-vector case. Their earlier runs
+took about13.8seconds and9.3seconds. All three operand forms pass the
+2second bound;18 matched parent/current points peak at0.066seconds
+and49,928KiB runner/child RSS.
+Native policy-copy assertions also pass. The repaired source passes a
+fresh complete qualification; no second review was used. Three Minors
+are deferred, bringing the total to44.
+Fifteen fresh native vendor producer runs reproduce all five forms.
+Every actual vendor model, program and script byte is unchanged, so
+the six recorded Tessent jobs remain applicable after current binary,
+frozen-input and export/trace identities are rechecked.
+Integration remains pending. Evidence:
+build/clock-program-components-20261127/ (pre-review/ retains the earlier bundle).
