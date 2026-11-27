@@ -30,6 +30,12 @@ the pre-correction receipt and explain missing original driver bytes.
 - [x] Protect original receipt, parent 4135/48 identities and historical artifact hashes. Record the actual two evidence gaps; this documentation/artifact correction adds no production behavior requiring a TDD implementation cycle.
 - [x] Implement the bounded private evidence driver using the existing five forms. Run 45 measurement rows/225 CLI processes and 9 prepared native cases/45 CLI processes; verify literal historical inputs, outputs and unchanged 10s/512MiB caps. Parse and compare all 16 archived exports, verifying their job inputs/logs/status/configuration/version. Save exact executed driver copies beside both fresh receipts.
 - [x] Correct only the Task194 native receipt scope field after preserving original bytes; keep a before/after hash sidecar. Verify old Task196 evidence unchanged and current 4135/48 identities. Record results in tracker; run source build/install, exact three-member package checks and whitespace checks.
-- [ ] Read the complete selected patch, commit under grouped policy and run task-done with tests/.task209-check.py. Expected: all artifact/identity/package checks exit0; candidate 25 remaining.
-- [ ] One independent whole-branch review, one verified Critical/Important repair wave if needed, no rereview; defer Minors.
-- [ ] Merge master, verify merged identities/evidence and package members, push, archive only own ledger/helpers, detach retained worktree and retire branch.
+- [x] Read the complete selected patch, commit under grouped policy and run task-done with tests/.task209-check.py. Expected: all artifact/identity/package checks exit0; candidate 25 remaining.
+- [x] One independent whole-branch review, one verified Critical/Important repair wave if needed, no rereview; defer Minors.
+- [x] Merge master, verify merged identities/evidence and package members, push, archive only own ledger/helpers, detach retained worktree and retire branch.
+
+Completed at `d18fb09`, merged and pushed as `6fa8de5`. Independent review:
+0 Critical, 0 Important, 2 new Minor issues; two inherited resolutions and
+27 remaining findings. All four qualification gates and three merged-result
+checks pass; 117 stashes preserved. Evidence:
+`build/clock-evidence-receipts-20261128/`.

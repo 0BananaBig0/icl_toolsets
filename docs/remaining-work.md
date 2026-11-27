@@ -2661,7 +2661,19 @@ All 4135 qualified inputs and 48 products remain identical; Task208 broad
 regression evidence remains historical. Source build/install and exact
 documentation package checks follow in the qualification receipt.
 
-Two inherited findings are candidate closures; 25 findings remain pending
-independent review and integration. Evidence:
+The two inherited provenance findings are resolved. The sole independent
+review found 0 Critical, 0 Important and 2 new Minor issues; 27 findings
+remain deferred. Integration results follow below. Evidence:
 `build/clock-evidence-receipts-20261128/`. Broader inventory and excluded
 coverage item1 remain open.
+
+Task209 is merged and pushed to `master` as `6fa8de5`. All four qualification
+gates and three merged-result checks pass on identical 4135 inputs, 48 products
+and three package members. Fresh evidence covers 270 native replay processes
+and 16 parser calls; 16 archived vendor jobs are attested, with zero fresh
+vendor jobs. Original missing driver bytes remain unrecovered. All 117 stashes
+are preserved. The owned branch is retired; its qualified source archive,
+original/corrected receipt, driver copies, review and ledger remain under
+`build/clock-evidence-receipts-20261128/`. The reusable detached worktree and
+sibling ledgers remain available. Broader inventory and excluded coverage item1
+remain open.
