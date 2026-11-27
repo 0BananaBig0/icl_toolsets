@@ -75,15 +75,20 @@ def replay_observations(data,count,width):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     for name in ('binary','parent','sanitized','output'):parser.add_argument('--'+name,type=Path,required=True)
+    parser.add_argument('--static',type=Path)
     args=parser.parse_args();output=args.output.resolve();output.mkdir(parents=True,exist_ok=True)
     root=Path(__file__).resolve().parents[3]
     digest=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
     binaries=dict(current=args.binary.resolve(),parent=args.parent.resolve(),sanitized=args.sanitized.resolve())
-    report=dict(environment=platform.platform(),sanitizer_options=ASAN_OPTIONS,parent_control='default automatic callback hardware, without unsupported parent modeled observations',
+    if args.static is not None:binaries['static']=args.static.resolve()
+    report=dict(environment=platform.platform(),sanitizer_options=ASAN_OPTIONS,parent_control='default automatic callback hardware; parent modeled scale failures are recorded separately',
                 binaries={key:dict(path=str(path),sha256=digest(path)) for key,path in binaries.items()},runs=[])
-    grid=[(n,width) for n in (1,2,8) for width in (8,32)]+[(n,64) for n in (1,2)]+[(1,256)]
-    cases=[(owner,n,width) for owner in ('parent','current') for n,width in grid]
+    grid=([(n,width) for n in (1,2,8) for width in (8,32)]+
+          [(n,64) for n in (1,2)]+[(1,256),(16,8),(32,8),(1,512),(1,1024)])
+    owners=('parent','current')+(('static',) if 'static' in binaries else ())
+    cases=[(owner,n,width) for owner in owners for n,width in grid]
     cases += [('sanitized',n,width) for n,width in ((2,8),(8,32),(1,256))]
+    expected_runs=sum(3*(1 if owner=='parent' else 3) for owner,_,_ in cases)
     parents={};failed=False
     for owner,count,width in cases:
         for repeat in range(3):
@@ -126,8 +131,8 @@ def main():
                 (output/'results.json').write_text(json.dumps(report,indent=2)+'\n')
                 if form=='source':source=row
     unchanged=all(digest(path)==report['binaries'][key]['sha256'] for key,path in binaries.items())
-    complete=len(report['runs'])==135
-    print(json.dumps(dict(runs=len(report['runs']),matrix_complete=complete,all_verified=not failed,binaries_unchanged=unchanged)))
+    complete=len(report['runs'])==expected_runs
+    print(json.dumps(dict(runs=len(report['runs']),expected_runs=expected_runs,matrix_complete=complete,all_verified=not failed,binaries_unchanged=unchanged)))
     return int(failed or not complete or not unchanged)
 
 if __name__=='__main__':raise SystemExit(main())

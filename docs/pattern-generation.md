@@ -11936,3 +11936,55 @@ documentation-package refresh. The owned task branch is deleted; its ledger,
 `build/write-only-read-scope-20261127/`. The reusable detached worktree and
 sibling ledgers are preserved. The one Important finding is fixed; 45 Minors
 remain deferred. Continue the queued automatic-primary scale work under item10.
+
+
+### Primary callback solver scaling (Task201)
+
+Primary-only automatic callbacks retain their existing actual-data and event
+contracts at the larger measured inputs. The scheduler now packs adjacent
+unsigned objective bits within the existing 32-bit weight bound, omits
+constant chunks and uses one bit for the two ranks of gated fixed differences. Data-deviation, drive-count and pin-deviation priorities retain
+their original order. Pin constraints, native replay and resource limits are
+unchanged; the serial objective path keeps its existing implementation.
+
+The maintained matrix runs 300 actual generation/replay processes: 39 executed parent
+default-generation controls, 117 normal and 117 static modeled forms, and 27
+sanitizer forms with the existing 128-MiB quarantine configuration. Normal/static
+coverage includes 1/2/8 lanes at 8/32 bits, 1/2 at 64 bits, one at 256 bits,
+16/32 at eight bits and one at 512/1024 bits, in three rounds. Fresh actual
+histories, miscompare masks/status, once-only callbacks, exact source/flat/generated
+bytes and parent hardware are checked. The larger normal/static cases satisfy
+10 seconds/512 MiB per process, with 256 MiB for single-wide cases. The 32-lane
+normal modeled source median is 3.161 seconds;
+the 1024-bit source median is 1.698 seconds and its
+largest normal source RSS is 214452 KiB. The protected-parent modeled
+32-lane baseline failed all three rounds; no speedup is claimed over those failed
+observations. Its successful 1024-bit modeled source baseline exceeded 256 MiB.
+Configured sanitizer measurement bounds do not describe the default functional
+sanitizer environment, which retains its original leak-enabled configuration.
+
+All 43 core qualification gates pass: 227 Python suites reporting 3558 tests,
+25 leak-enabled native/CLI/corpus checks, three changed-C++ quality checks,
+corpus/editor/grammar checks and source-package build/install. The new 32-lane
+and 1024-bit functional regressions run under default leak-enabled instrumentation
+without competing full-project CPU load. Five optional reference cases are
+skipped. Exact hashes bind 4133 production/test inputs and 44 executables.
+Packaging is repeated after recording this documentation. Independent review
+and integration remain pending; 45 inherited Minors remain deferred.
+
+Reproduce the maintained matrix from the repository root with built normal,
+static and sanitizer generators and a retained parent binary:
+
+```sh
+python3 tests/src/pattern/benchmark_automatic_primary_readback.py \
+  --binary build/icl-pattern-generation \
+  --static build/icl-pattern-generation-static \
+  --parent /path/to/parent/icl-pattern-generation \
+  --sanitized /path/to/sanitized/icl-pattern-generation \
+  --output build/primary-callback-measurements
+```
+
+Commands, input/output hashes, actual timing/RSS rows, the failed baseline and
+experimental diagnoses are retained under `build/primary-callback-scaling-20261128/`.
+Broader item10 workloads and original items4/6 remain open; this changes measured
+solver scaling for already eligible models. Coverage item1 stays excluded.

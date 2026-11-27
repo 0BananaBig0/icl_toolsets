@@ -37,6 +37,41 @@ void MinimizeBits(z3::optimize* solver, const z3::expr& bits) {
   }
 }
 
+z3::expr ConditionalDeviation(const z3::expr& enabled,
+                              const z3::expr& difference) {
+  auto delta = difference.simplify();
+  auto& context = delta.ctx();
+  if (delta.is_numeral()) {
+    // A fixed difference has only zero versus nonzero cost to rank.
+    const auto zero = context.bv_val(0, delta.get_sort().bv_size());
+    delta = context.bv_val((delta == zero).simplify().is_true() ? 0 : 1, 1);
+  }
+  return z3::ite(enabled, delta, context.bv_val(0, delta.get_sort().bv_size()));
+}
+
+void MinimizeBits(z3::optimize* solver, const std::vector<z3::expr>& values) {
+  // Packing adjacent unsigned objectives preserves their lexicographic order.
+  std::optional<z3::expr> packed;
+  unsigned used = 0;
+  const auto flush = [&] {
+    if (packed) MinimizeBits(solver, *packed);
+    packed.reset();
+    used = 0;
+  };
+  for (const auto& value : values) {
+    for (unsigned high = value.get_sort().bv_size(); high;) {
+      const unsigned width = std::min(high, 32 - used);
+      const auto bits = value.extract(high - 1, high - width).simplify();
+      high -= width;
+      if (bits.is_numeral()) continue;
+      packed = packed ? z3::concat(*packed, bits) : bits;
+      used += width;
+      if (used == 32) flush();
+    }
+  }
+  flush();
+}
+
 class ScheduleLimit : public std::runtime_error {
  public:
   using std::runtime_error::runtime_error;
@@ -4702,9 +4737,8 @@ class ScanScheduler::Impl {
                           (write.old_fill.bits & write.load.known &
                            ~care.bits)));
                 } else {
-                  data_deviations.push_back(z3::ite(
-                      write.enabled, write.load.bits ^ write.old_fill.bits,
-                      context_.bv_val(0, node.Width())));
+                  data_deviations.push_back(ConditionalDeviation(
+                      write.enabled, write.load.bits ^ write.old_fill.bits));
                 }
               }
               auto active =
@@ -4793,8 +4827,7 @@ class ScanScheduler::Impl {
                                            (fills.at(id).bits & ~care.bits)));
             } else {
               data_deviations.push_back(
-                  z3::ite(enabled, load.bits ^ fills.at(id).bits,
-                          context_.bv_val(0, node.Width())));
+                  ConditionalDeviation(enabled, load.bits ^ fills.at(id).bits));
             }
           }
           auto fill = Choose(enabled, load, fills.at(id));
@@ -4940,11 +4973,9 @@ class ScanScheduler::Impl {
                    (actual.bits & wanted.known) == wanted.bits);
       }
       if (together) solver.add(simultaneous);
-      for (const auto& deviation : data_deviations) {
-        MinimizeBits(&solver, deviation);
-      }
+      MinimizeBits(&solver, data_deviations);
       solver.minimize(count);
-      for (const auto& deviation : deviations) MinimizeBits(&solver, deviation);
+      MinimizeBits(&solver, deviations);
       const auto status = solver.check();
       if (status == z3::unsat || (read_only && status == z3::unknown)) continue;
       if (status != z3::sat) {

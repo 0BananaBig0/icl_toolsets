@@ -2,6 +2,7 @@
 """Automatic callback intent stays separate from actual primary observations."""
 import unittest
 
+import benchmark_automatic_primary_readback as scale
 import test_modeled_child_prefix as helpers
 from test_downstream_write_callbacks import MODEL
 
@@ -17,6 +18,45 @@ class AutomaticPrimaryReadback(unittest.TestCase):
     run_tool = helpers.ModeledChildPrefix.run_tool
     notes = helpers.ModeledChildPrefix.notes
     continued = helpers.ModeledChildPrefix.continued
+
+    def test_data_objective_order_precedes_drive_count(self):
+        for first_width, second_width in ((1, 64), (33, 1), (31, 32)):
+            with self.subTest(first_width=first_width, second_width=second_width):
+                source = f'''Module Chains {{
+ DataInPort en; DataInPort p;
+ DataRegister first[{first_width-1}:0] {{WriteDataSource {first_width}'b{'1'*first_width}; WriteEnSource en; ResetValue 0;}}
+ DataRegister second[{second_width-1}:0] {{WriteDataSource {second_width}'b{'1'*second_width}; WriteEnSource ~en; ResetValue 0;}}
+ DataOutPort qfirst[{first_width-1}:0] {{Source first;}}
+ DataOutPort qsecond[{second_width-1}:0] {{Source second;}}
+}}'''
+                _, reference = self.continued(
+                    source, 'iReset; iState en 1; iWrite p 0; iApply; '
+                    'iRead qfirst 0; iRead qsecond 0bx; iApply;\n',
+                    'iNote first=[iGetReadData qfirst -bin]; '
+                    'iNote second=[iGetReadData qsecond -bin];\n',
+                    [b'first=0b' + b'0'*first_width,
+                     b'second=0b' + b'1'*second_width])
+                self.assertIn(b'iWrite en 0b0\n', reference.split(b'iApply\n')[0])
+
+    def test_larger_primary_callbacks_preserve_actual_replay(self):
+        for count, width in ((32, 8), (1, 1024)):
+            with self.subTest(lanes=count, width=width):
+                icl, pdl, default, generated = (
+                    self.root / name for name in
+                    ('source.icl', 'source.pdl', 'default.pdl', 'generated.pdl'))
+                icl.write_text(scale.model(count, width))
+                pdl.write_text(scale.commands(count, width)[0])
+                default.write_text(scale.commands(count, width, False)[0])
+                hardware = self.run_tool(icl, default, 'hardware.pdl', modeled=False)
+                reference = self.run_tool(icl, pdl, 'reference.pdl')
+                self.assertEqual(scale.hardware_output(reference, count, width), hardware)
+                for index in range(count):
+                    self.assertEqual(hardware.count(('iNote cb%d\n' % index).encode()), 1)
+                generated.write_text(scale.replay_observations(reference, count, width))
+                self.assertEqual(self.run_tool(self.root / 'debug/Chains.icl', pdl,
+                                               'flat/result.pdl'), reference)
+                self.assertEqual(self.run_tool(icl, generated, 'generated/result.pdl'),
+                                 reference)
 
     def test_automatic_intent_does_not_become_actual_downstream_data(self):
         self.continued(MODEL,PROCS+'''iReset; iWrite dest 9; iApply
