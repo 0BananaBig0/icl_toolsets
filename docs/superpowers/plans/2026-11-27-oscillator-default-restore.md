@@ -14,7 +14,8 @@ period renderer; keep ordinary clock lowering and validation boundaries.
 ## Global Constraints
 
 Read the actual intrinsic ICL period, never a previous override or guessed period.
-Preserve checked versions, source-less/factor-only/cycle/fanout/differential guards,
+Preserve checked versions, source-less/cycle/fanout/differential guards and
+retained-normalization source validation for factor-only overrides,
 atomic failures, C++17, existing resource limits and immutable procedure bodies.
 Retain item1 exclusion,117 stashes and38 inherited deferred Minors.
 
@@ -23,7 +24,7 @@ Retain item1 exclusion,117 stashes and38 inherited deferred Minors.
 - Restoring an oscillator reads its own declared period after arbitrary prior source or period definitions.
 - Old checked descendants and separately restored vector bits retain their original versioned roots and ratios.
 - Default lowering without an explicit period operation remains equivalent to original and associated-flat replay.
-- Invalid source-less/factor-only/differential/hardware operations cannot commit definitions or publish artifacts.
+- Invalid source-less/differential/hardware operations cannot commit definitions or publish artifacts. Retained factor-only normalization rejects a missing or unrepresentable source before committing; ordinary non-normalizing overrides can defer missing-source validation until a new clock check, while a previously checked oscillator version remains usable.
 - Canonical vendor references use explicit periods; raw omission rules and physical elapsed timing remain unqualified.
 
 ### Task 1: restore intrinsic oscillator defaults
@@ -42,7 +43,8 @@ normalization is requested, produce {target,-period,declaredMagnitude,unit}.
 - [x] Maintain tests for ordinary source replacement followed by default restore,
   period-bearing replacement/restore, unit spellings, vector procedures/reset,
   independently checked descendants and a nine-point replay matrix. Keep only
-  factor-only cases in the former oscillator empty/factor rejection loop.
+  factor-only cases in the retained-normalization rejection loop. Preserve
+  ordinary deferred validation and previously checked oscillator versions.
   Expected: new positive cases fail on the qualified parent.
 - [x] Extend native clock snapshots with exact old/new root and cycle assertions,
   restored normalized operands and failed-normalization sentinel preservation.

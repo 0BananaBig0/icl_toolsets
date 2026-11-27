@@ -65,7 +65,9 @@ not change diagnostic ordering for invalid programs.
 The graph is sparse and per bit. It must not expand isolated wide oscillator
 declarations into all their bits, or repeatedly scan the network per operation.
 Two multi-source traversals and existing ordered maps/sets require O((V+E+P)
-log V) work and O(V+E) temporary space for referenced routing bits and operations.
+log V) work and O(V+E+P) temporary space, where V counts referenced routing bits,
+E counts edges and P counts input operations. Temporary operation-derived
+vectors can retain duplicate entries.
 Programs without a period or candidate keep the fast path. A new time engine
 or extra generated clock ports would change contracts without being needed.
 

@@ -1955,8 +1955,10 @@ preserved. The broader inventory and 35 deferred Minors remain open.
 
 Canonical main PDL emits separate numeric/unit operands. Integer periods retain
 their unit; exact decimal/scientific values refine only as needed, for example
-1.25us to1250 ns and1.0e-9s to1 ns. Native-only sub-attosecond and extreme-exponent
-values remain lossless annotations. Current guards and resource limits remain.
+1.25us to1250 ns and1.0e-9s to1 ns. Sub-attosecond values and exponents that cannot
+be canceled through coefficient zeros and unit refinement retain their exact
+native spelling; large cancelable exponents can still emit integer periods.
+Current guards and resource limits remain.
 
 Both generators pass the five new serialization methods and ten existing period
 methods; legacy clock/readback/reset/frontend/native checks and six changed-code
@@ -2066,35 +2068,35 @@ vector bits, procedure/reset replay and default root-relative lowering are
 preserved. Missing intrinsic sources, invalid factors, differential targets and
 unsupported hardware fanout retain their validation boundaries.
 
-The normal/static generators pass19 period methods, with73 ordinary clock
-methods and native clock snapshots passing. All45 workload/control points pass
-the unchanged10second/512MiB budgets; the restoration matrix peaks at0.530seconds
-and76,272KiB. One restoration update is a source replacement plus a default
+The normal/static generators pass 19 period methods, with 73 ordinary clock
+methods and native clock snapshots passing. All 45 workload/control points pass
+the unchanged 10 second/512 MiB budgets; the restoration matrix peaks at 0.530 seconds
+and 76,272 KiB. One restoration update is a source replacement plus a default
 restoration, with one initial period override per point. Input/output artifacts
 are captured and bound to the current binaries and maintained tests. Three
 explicit-period reference/generated vendor pairs pass six fresh sequential
-Tessent2026.2 jobs with byte-identical exports and literal relative traces.
+Tessent 2026.2 jobs with byte-identical exports and literal relative traces.
 Fifteen native producer runs cover all five replay forms; current binary, trace,
 frozen-input and actual tool-input/export hashes agree.
 
-All39 final qualification commands pass: 227 Python
-suite runs report3,494 tests with five optional ANTLR skips.
-All22 leak-enabled sanitizer checks and six changed-code C++ checks pass,
+All 39 final qualification commands pass: 227 Python
+suite runs report 3,494 tests with five optional ANTLR skips.
+All 22 leak-enabled sanitizer checks and six changed-code C++ checks pass,
 along with corpus, editor checks and source packaging. The final identity
-manifest binds4,125 inputs and44 executables. Full regression takes
-1,670.251 seconds; packaging takes54.778 seconds.
-One fresh independent review found0Critical/1Important/3Minor. A single
+manifest binds 4,125 inputs and 44 executables. Full regression takes
+1,670.251 seconds; packaging takes 54.778 seconds.
+One fresh independent review found 0 Critical / 1 Important / 3 Minor. A single
 evidence-only repair pass resolves the Important finding: every control input
 and output file is rehashed, all nine parent/current pairs match and all planned
 coordinates occur once. Four rejection controls pass and the authentic bundle
 still qualifies on unchanged source/product hashes. Three Minors are deferred,
-bringing the total to41. Task196 is merged and pushed to master as e9b66af;
-all nine merged-result checks pass on identical4,125 inputs and ten copied
-qualified products. The task branch is deleted;117 stashes and unrelated
+bringing the total to 41. Task196 is merged and pushed to master as e9b66af;
+all nine merged-result checks pass on identical 4,125 inputs and ten copied
+qualified products. The task branch is deleted; 117 stashes and unrelated
 worktrees are preserved.
 
-Parent: master0eae49b; branch: codex/oscillator-default-restore. The broader
-inventory and38 inherited deferred Minors remain open; item1 stays excluded.
+Parent: master 0eae49b; branch: codex/oscillator-default-restore. The broader
+inventory and 38 inherited deferred Minors remain open; item1 stays excluded.
 Evidence: build/oscillator-default-restore-20261127/.
 
 ## Task197: independent clock programs
@@ -2357,3 +2359,12 @@ The owned task branch is retired; its source archive, ledger, review, helpers
 and receipts remain in `build/primary-callback-scaling-20261128/`. The reusable
 detached worktree and sibling ledgers remain available. The 45 inherited Minors
 and broader original inventory remain open; coverage item1 stays excluded.
+
+
+## Task202 deferred guide errata
+
+Seven source-backed documentation findings are addressed; the candidate deferred
+count is 45 minus 7 = 38. See [the guide correction record](pattern-generation.md#deferred-guide-errata-task202)
+for the affected contracts and 12-check qualification. Independent review and
+integration remain pending. Historical counts, broader inventory and excluded
+coverage item1 retain their status. Evidence: `build/deferred-guide-errata-20261128/`.
