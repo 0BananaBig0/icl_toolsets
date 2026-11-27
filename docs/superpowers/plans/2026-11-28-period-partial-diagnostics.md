@@ -32,5 +32,11 @@ must retain validation; LSP correction must clear stale errors. Task1 covers all
 
 ## Branch completion
 
-- [ ] One independent whole-branch review; regrade every finding and declined area, one Critical/Important RED-to-GREEN repair wave if needed, defer Minors without rereview.
-- [ ] Merge master, verify affected behavior and exact qualified identities, push, archive only this ledger/helpers, retire this branch and continue the original inventory.
+- [x] One independent whole-branch review; regrade every finding and declined area, one Critical/Important RED-to-GREEN repair wave if needed, defer Minors without rereview.
+- [x] Merge master, verify affected behavior and exact qualified identities, push, archive only this ledger/helpers, retire this branch and continue the original inventory.
+
+Completed at `6a55a9d`, merged and pushed as `f131b02`. Independent review:
+0 Critical, 0 Important, 2 new Minor issues; one inherited resolution and
+32 remaining findings. All 60 qualification gates and six merged-result checks
+pass; 117 stashes are preserved. Evidence:
+`build/period-partial-diagnostics-20261128/`.

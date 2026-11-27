@@ -2492,6 +2492,19 @@ quality checks pass. Source build/install and final identities follow in the
 qualification receipt. Exactly two of 4133 input paths change. No new vendor,
 device, throughput or unrelated full-repository regression claim is made.
 
-The candidate inherited finding count is 31 minus 1 = 30. Independent review
-and integration remain pending. Evidence: `build/period-partial-diagnostics-20261128/`.
+The inherited diagnostic finding is resolved. The sole independent review
+found 0 Critical, 0 Important and 2 new Minor issues; 32 findings remain
+deferred. The follow-ups are the invalid-unit diagnostic span and a maintained
+versioned `didChange` correction test. The reviewer independently verified that
+actual `didChange` already clears the error at both levels. Integration results
+follow below. Evidence: `build/period-partial-diagnostics-20261128/`.
 Broader inventory and excluded coverage item1 remain open.
+
+Task205 is merged and pushed to `master` as `f131b02`. All 60 qualification
+gates and six merged-result checks pass on identical 4133 inputs, five required
+package members and 48 qualified products. Four merged CLI reports contain
+186 tests. All 117 stashes are preserved. The owned branch is retired; its
+qualified source archive, review, ledger and helper copies remain under
+`build/period-partial-diagnostics-20261128/`. The reusable detached worktree and
+sibling ledgers remain available. Broader inventory and excluded coverage item1
+remain open.
