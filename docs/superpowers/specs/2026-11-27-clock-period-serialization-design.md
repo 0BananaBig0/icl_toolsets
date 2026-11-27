@@ -73,6 +73,6 @@ normalization, not standalone export replay, device behavior or timing signoff.
 Vendor pairs consume canonical main PDL. Reset-only output preserves source
 and immutable procedures, so native-only input spellings there need another
 native generation pass before vendor loading.
-Native-only sub-attosecond/extreme-exponent literals remain outside that vendor
+Native-only sub-attosecond/uncancelable-exponent literals remain outside that vendor
 claim. Broader original items,35 inherited deferred Minors and excluded item1
 remain open. Integrate verified work into master, push and retire only this branch.

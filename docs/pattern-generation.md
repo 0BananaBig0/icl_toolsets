@@ -546,8 +546,10 @@ broader syntax support and never execute PDL.
   `tap.INSTRUCTION` target supports reads, writes and ranges; synthetic TAP data
   registers remain rejected. An instruction read/partial update after an
   ambiguous reset encoding requires explicit values for the unknown bits.
-  Storage scanned while held in reset is emitted as an unqualified read rather
-  than an update. These operations also survive flat-ICL/generated-PDL replay.
+  Storage scanned while held in reset is not updated. Generated logical reads
+  retain the caller's requested target and slice; incidental capture during
+  write-only preparation does not create an unqualified read. Existing implicit
+  IR capture checks remain. These operations also survive flat-ICL/generated-PDL replay.
 - Source-attributed failures and invocation stacks. Structural disconnection,
   unsupported behavior and bounded solver exhaustion are distinct errors.
 - Literal TCK `iRunLoop` counts (IEEE 1687-2014 §7.9.17, printed pp. 175–176)
@@ -11531,12 +11533,13 @@ supply the value or unit; their concrete values are validated at invocation.
 
 For example, `iClockOverride pll.osc -period 20 ns; iClock fast;
 iRunLoop 7 -sck fast` emits separate period operands `20 ns` and retains the logical
-clock target and wait. If any period override executes, the whole generated
-clock program retains its definitions, checks and logical waits. Targets checked
+clock target and wait. Period-bearing programs retain their logical clock
+definitions, checks and waits except for the qualified independent components
+described under [Independent clock programs](#independent-clock-programs-task197). Targets checked
 before an override retain their earlier definition until checked again; reset
 and procedure return preserve this history. Hierarchical, indexed and associated
 flat names use the existing target mapping. Local-reset rendering uses the same
-preservation rule, including procedure groups preceding the first override.
+component-specific rule, including procedure groups preceding the first override.
 
 In retained clock components, source/ratio overrides emit explicit `-source`,
 `-freqMultiplier` and `-freqDivider` fields. If `-source` is omitted, its ICL
@@ -11569,8 +11572,10 @@ This conversion uses decimal digits and preserves native model values exactly.
 
 Tessent Shell 2026.2 probes accept separate integer operands and reject the
 attached, decimal and scientific operands tested. Values finer than one
-attosecond and extreme negative exponents retain their native spelling as
-separate operands; they remain outside the measured vendor subset. No elapsed
+attosecond, or negative exponents that cannot be canceled through coefficient
+zeros and unit refinement, retain their native spelling as separate operands.
+Large exponents can still produce integer periods when their coefficients
+cancel them. Those unconverted spellings remain outside the measured vendor subset. No elapsed
 clock engine, device observation or hardware timing qualification is added.
 Fresh paired vendor runs accept the canonical main PDL and match the reference
 exports for the tested configured models. All 39 qualification commands pass,
@@ -11591,7 +11596,8 @@ describes different omission behavior; a vendor reference must explicitly set
 the intended native fields. Six recorded configured Tessent2026.2 jobs pass with
 three byte-identical explicit-reference/generated exports and
 expected relative-operation traces. These references explicitly implement native
-defaults; original partial inputs retain the vendor dialect difference.
+defaults. The omission contrast is attributed to the cited v2023.4 manual;
+these 2026.2 reference pairs do not qualify raw partial-input omission behavior.
 
 All 39 final qualification commands pass: 227 Python suites report 3,484 tests,
 with five optional ANTLR skips; all 22 sanitizer checks, nine changed-code C++
@@ -11633,36 +11639,36 @@ This is the native interpretation of IEEE1687-2014 sections6.4.6.20 and7.9.15–
 existing vendor extension. Vendor references explicitly state the declared
 period; raw vendor empty-command omission behavior is not qualified.
 
-The 19 period methods pass on both generator variants, along with73 ordinary
+The 19 period methods pass on both generator variants, along with 73 ordinary
 clock methods and native snapshot assertions. Three rounds of the nine
-restoration workloads and18 matched parent/current ordinary controls pass:
+restoration workloads and 18 matched parent/current ordinary controls pass:
 45 points,225 CLI processes and three Python runners. A restoration point has
-8/128/1024 replacement/restoration pairs across2/8/32 declared oscillator bits,
-plus one initial period override. The maximum point takes0.530 seconds and
-76,272 KiB runner/child RSS, within10seconds/512MiB. Captured input/output bytes
+8/128/1024 replacement/restoration pairs across 2/8/32 declared oscillator bits,
+plus one initial period override. The maximum point takes 0.530 seconds and
+76,272 KiB runner/child RSS, within 10 seconds/512 MiB. Captured input/output bytes
 and repeat hashes agree; ordinary parent/current outputs are identical. Capture
 I/O and concurrent qualification are included, so no isolated speedup is claimed.
-Six fresh sequential Tessent2026.2 jobs pass with three byte-identical
+Six fresh sequential Tessent 2026.2 jobs pass with three byte-identical
 explicit-period reference/generated exports and literal expected relative
 traces. Fifteen native producer runs cover all five replay forms. These are
 configured original-model comparisons; exports omit period metadata and do not
 establish standalone replay, raw vendor omission behavior or physical timing.
-All39 final qualification commands pass: 227 Python
-suite runs report3,494 tests with five optional ANTLR skips.
-All22 leak-enabled sanitizer checks and six changed-code C++ checks pass,
+All 39 final qualification commands pass: 227 Python
+suite runs report 3,494 tests with five optional ANTLR skips.
+All 22 leak-enabled sanitizer checks and six changed-code C++ checks pass,
 along with corpus, editor checks and source packaging. The final identity
-manifest binds4,125 inputs and44 executables. Full regression takes
-1,670.251 seconds; packaging takes54.778 seconds.
-One independent review found0 Critical,1 Important and3 Minor findings. A single
-evidence-only repair pass fixes the Important finding: all18 ordinary controls
+manifest binds 4,125 inputs and 44 executables. Full regression takes
+1,670.251 seconds; packaging takes 54.778 seconds.
+One independent review found 0 Critical, 1 Important and 3 Minor findings. A single
+evidence-only repair pass fixes the Important finding: all 18 ordinary controls
 now rehash their two input and five output files, all nine parent/current pairs
 match, and every matrix/control coordinate is required exactly once. Four
 negative controls reject altered bytes, divergent pairs and missing workloads;
 the real bundle passes. Source/product identities are unchanged, so the full
 qualification and recorded vendor runs are reused. Three Minors are deferred,
-bringing the total to41. Task196 is merged and pushed to master as e9b66af.
+bringing the total to 41. Task196 is merged and pushed to master as e9b66af.
 All nine merged-result checks pass on identical source/product identities; the
-task branch is deleted and117 stashes are preserved. Evidence:
+task branch is deleted and 117 stashes are preserved. Evidence:
 build/oscillator-default-restore-20261127/.
 
 ### Independent clock programs (Task197)
@@ -11999,3 +12005,28 @@ The owned task branch is retired; its source archive, ledger, review, helpers
 and receipts remain in `build/primary-callback-scaling-20261128/`. The reusable
 detached worktree and sibling ledgers remain available. The 45 inherited Minors
 and broader original inventory remain open; coverage item1 stays excluded.
+
+
+### Deferred guide errata (Task202)
+
+Seven inherited documentation findings are corrected against current source
+and retained evidence: Task194 exponent cancellation, Task195 vendor-version
+attribution, Task196 factor-only validation and number spacing, Task197 component
+retention and temporary space, and Task200 reset-held read scope. The affected
+usage paragraphs and design/plan cross-references now describe the same contracts.
+The Task196 sections differ only in whitespace; historical measurements and
+checkpoint counts are preserved.
+
+Eight existing normal/static capability suites report 248 tests. Native
+clock snapshots/policy, unchanged-input/product identities, whitespace and source
+package build/install complete the 12-check qualification. All 4133 production/test
+inputs and 44 executables retain their Task201 identities. The full behavioral
+regression, sanitizer matrix and vendor jobs are not rerun for these Markdown
+corrections; no new behavior or performance claim is made.
+
+The author walkthrough covers the seven affected generator-user decisions and
+is explicitly labeled author self-check. Independent technical/reader review
+and integration remain pending. Seven of 45 inherited Minors are addressed;
+the candidate remainder is 38, with broader inventory and excluded item1 unchanged.
+Receipts, finding dispositions and the walkthrough are retained under
+`build/deferred-guide-errata-20261128/`.
