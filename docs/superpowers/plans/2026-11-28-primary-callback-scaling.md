@@ -32,9 +32,15 @@
 - [x] Discard the measured ineffective pin substitutions. Reuse the scalar objective helper to batch adjacent nonconstant primary objective bits within 32 bits; flush before/after the drive-count objective and normalize gated constant differences to their two attainable ranks before packing; retain full symbolic differences. Expected: final focused GREEN meeting 32-lane runtime and 1024-bit memory bounds, with unchanged parent hardware, source/flat/generated output and limits.
 - [x] Extend the existing maintained matrix with 16/32 eight-bit lanes and 512/1024 single-wide cases, normal/static exact replay and real parent default hardware. Keep the old sanitizer cases/configuration. Expected: 300 measured processes with static supplied, all required identities/histories/bounds checked; no parent modeled support claim.
 - [x] Run focused normal/static ordinary/readback/callback/feedback controls, native scheduler/readback/state, affected leak-enabled CLI and 15 native sanitizer suites, changed-C++quality, fresh full make check, corpus/editor and source-package build/install. Expected: all final sources/products hashed, actual outcomes and optional reference skips recorded.
-- [ ] Document the measured supported scope, stage/read the complete selected raw diff, write grouped commit and run task-done with the artifact checker. Expected: reproducible final qualification and preserved deferred work.
+- [x] Document the measured supported scope, stage/read the complete selected raw diff, write grouped commit and run task-done with the artifact checker. Expected: reproducible final qualification and preserved deferred work.
 
 ## Branch completion
 
-- [ ] One fresh independent whole-branch review; regrade and fix Critical/Important findings in one RED→GREEN pass and a fresh applicable suite; defer Minors without re-review.
-- [ ] Merge into master, verify the actual merged result, push, retire only the owned branch and archive only this plan workspace; continue the original inventory.
+- [x] One fresh independent whole-branch review; regrade and fix Critical/Important findings in one RED→GREEN pass and a fresh applicable suite; defer Minors without re-review.
+- [x] Merge into master, verify the actual merged result, push, retire only the owned branch and archive only this plan workspace; continue the original inventory.
+
+Completed at `1450884`, merged and pushed as `221c666`. The independent
+review found 0 Critical/Important/new Minor findings. All 44 qualification gates,
+300 measured processes and 12 merged-result checks pass; 117 stashes and 45
+inherited deferred Minors are preserved. Source evidence and the owned ledger
+are archived under `build/primary-callback-scaling-20261128/`.

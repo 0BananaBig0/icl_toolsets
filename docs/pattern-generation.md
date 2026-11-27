@@ -11969,8 +11969,8 @@ corpus/editor/grammar checks and source-package build/install. The new 32-lane
 and 1024-bit functional regressions run under default leak-enabled instrumentation
 without competing full-project CPU load. Five optional reference cases are
 skipped. Exact hashes bind 4133 production/test inputs and 44 executables.
-Packaging is repeated after recording this documentation. Independent review
-and integration remain pending; 45 inherited Minors remain deferred.
+The final documentation-package refresh passed. The independent review and
+merged-result checks below complete this task; 45 inherited Minors remain deferred.
 
 Reproduce the maintained matrix from the repository root with built normal,
 static and sanitizer generators and a retained parent binary:
@@ -11988,3 +11988,14 @@ Commands, input/output hashes, actual timing/RSS rows, the failed baseline and
 experimental diagnoses are retained under `build/primary-callback-scaling-20261128/`.
 Broader item10 workloads and original items4/6 remain open; this changes measured
 solver scaling for already eligible models. Coverage item1 stays excluded.
+
+Task201 is merged and pushed to `master` as `221c666`. The sole fresh
+independent review found no Critical, Important or new Minor findings. All
+44 qualification gates and 12 merged-result checks pass on identical 4133
+production/test inputs, 25 copied normal/static products and 19 qualified
+sanitizer products. The 300-process matrix and default leak-enabled functional
+checks retain their documented environments. All 117 stashes are preserved.
+The owned task branch is retired; its source archive, ledger, review, helpers
+and receipts remain in `build/primary-callback-scaling-20261128/`. The reusable
+detached worktree and sibling ledgers remain available. The 45 inherited Minors
+and broader original inventory remain open; coverage item1 stays excluded.
