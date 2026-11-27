@@ -29,6 +29,50 @@ class DataResetDependencies(unittest.TestCase):
     run_tool = helpers.SimultaneousChains.run_tool
     replay = helpers.SimultaneousChains.replay
 
+    def test_preparation_preserves_unread_scan_storage(self):
+        source = """Module Sink {
+ ScanInPort si; ResetPort rst;
+ ScanRegister r { ScanInSource si; CaptureSource r; ResetValue 0; }
+ ScanOutPort so { Source r; } DataOutPort q { Source r; }
+}
+Module Chains {
+ ScanInPort si; ResetPort global; DataInPort enable;
+ ScanRegister bus { ScanInSource si; CaptureSource bus; ResetValue 0; }
+ DataRegister v { WriteDataSource 1'b0; WriteEnSource bus; }
+ LogicSignal reset { ~v; }
+ DataMux gate SelectedBy reset { 1'b0: global; 1'b1: 1'b1; }
+ Instance a Of Sink { InputPort si=bus; InputPort rst=gate; }
+ ScanOutPort so { Source a.so; }
+ DataOutPort q { Source a.q; Enable bus; }
+}
+"""
+        pio = source.replace('SelectedBy reset', 'SelectedBy enable')
+        pio = pio.replace('Source a.q; Enable bus', 'Source a.q; Enable enable')
+        data = pio.replace('ScanRegister r { ScanInSource si; CaptureSource r;',
+                           "DataRegister r { WriteDataSource 1'b0; WriteEnSource 1'b0;")
+        data = data.replace('ScanOutPort so { Source r;',
+                            'ScanOutPort so { Source si;')
+        icl, pdl = self.root / 'source.icl', self.root / 'source.pdl'
+        for label, fixture in (('data', source), ('pio', pio), ('data-pio', data)):
+            for comparison in ('1', '0', '0bx'):
+                with self.subTest(route=label, comparison=comparison):
+                    icl.write_text(fixture)
+                    pdl.write_text('iPDLLevel 1; iReset; iState a.r 1; '
+                                   'iState enable 0; iState v 1; iState bus 0; '
+                                   f'iRead q {comparison}; iApply;\n')
+                    (self.root / 'result.pdl').write_bytes(b'prior output\n')
+                    error = self.run_tool(icl, pdl, ok=False,
+                                          extra=('--model_readback',))
+                    self.assertIn('reachability', error)
+                    self.assertEqual((self.root / 'result.pdl').read_bytes(),
+                                     b'prior output\n')
+
+        safe = source.replace('InputPort rst=gate', 'InputPort rst=global')
+        output = self.replay(safe, 'iPDLLevel 1; iReset; iState a.r 1; '
+                             'iState enable 0; iState v 1; iState bus 0; '
+                             'iRead q 0; iApply;\n')
+        self.assertIn(b'iRead q 0b0', output)
+
     def test_greedy_keeps_read_only_data_state(self):
         source = ("Module Chains { ScanInPort si; DataRegister d { ResetValue 0; } "
                   "ScanRegister gate { ScanInSource si; ResetValue 0; }\n")

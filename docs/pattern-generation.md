@@ -11838,3 +11838,35 @@ open, with item1 excluded.
 Task198 is merged at acb0140 and pushed to master. Nine merged-result checks
 pass against 4126 identical inputs and 25 copied qualified executables; the
 completed task branch is retired and all 117 stashes are preserved.
+
+
+### Pending observations through ordinary reset preparation (Task199)
+
+Mixed scan/PIO preparation preserves unread ScanRegister and DataRegister
+storage through ordinary reset settling. The comparison uses storage from
+before pin/control preparation, so a reset triggered either by a primary pin
+or by an acyclic data update cannot silently replace a pending observation.
+If enabling the only observation necessarily destroys its source, scheduling
+fails atomically and preserves prior output, state and observation callbacks.
+
+A selected capture still precedes that frame's updates; later reset effects
+remain allowed after the observation. Expected 0, 1 or X comparisons never supply
+actual data. Safe preparation and actual mismatch reporting keep their existing
+behavior. This repairs the existing mixed scheduling contract without adding
+controller, timing or hardware transport support or raising resource limits.
+
+Three-round measurements of 16/128 pending 8-bit scan registers in an ordinary
+reset network pass 36 matched parent/current source, flat and generated runs.
+Actual readback and miscompare literals agree; the largest current run is
+0.745 seconds/119968 KiB, within 10 seconds/512 MiB. The separate 72-point feedback
+matrix passes 240 candidate/current forms, with all 24 parent controls completing;
+its largest current run is 2.326 seconds/185100 KiB. These are bounded measurements,
+not a general performance or speedup claim. Exact commands, inputs, executable
+hashes and outputs are retained under `build/pending-reset-observations-20261127/`.
+
+Final qualification passes 37 commands, including 227 Python suites reporting
+3534 tests, 21 leak-enabled checks, six C++ quality checks, corpus/editor checks
+and source-package build/install verification. Exact hashes bind 4126 inputs
+and 44 executables; five optional reference tests are skipped. Independent
+review and integration remain pending; no new vendor or live-device
+qualification of this reset repair is claimed.

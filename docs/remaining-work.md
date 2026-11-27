@@ -2196,3 +2196,21 @@ A separate pre-existing defect remains: ordinary acyclic reset preparation can
 erase a pending scan observation. Parent and current reproductions are retained
 in `build/feedback-reset-pulses-20261127/follow-up-discovery.json`; this is the
 next task under original items3/6. The broader inventory remains open.
+
+
+## Task199 pending reset observations
+
+Task199 repairs ordinary reset preparation that erased pending ScanRegister
+or DataRegister observations in the mixed planner. Frame-entry storage is
+retained until capture, including pin-triggered and acyclic-data-triggered
+resets. Impossible preparation fails atomically; safe preparation, later
+updates and actual mismatching observations remain supported. All 37 final
+qualification commands pass: 227 Python suites reporting 3534 tests, 21
+leak-enabled checks, six C++ quality checks, corpus/editor checks and source
+packaging. Exact hashes bind 4126 inputs and 44 executables. Five optional
+reference tests are skipped. The 72-point feedback matrix passes all 240
+candidate/current forms and all 24 parent controls; 36 additional matched
+processes qualify the changed mixed path with up to 128 pending 8-bit registers.
+Independent review and integration remain pending. Original items 3/6 and the
+broader inventory remain open; item 1 is excluded and 44 inherited Minors remain
+preserved.

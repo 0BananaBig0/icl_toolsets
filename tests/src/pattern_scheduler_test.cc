@@ -6206,6 +6206,91 @@ void TestDataFeedbackScheduling() {
   }
 }
 
+void TestPendingResetObservations() {
+  const std::string source = R"(Module Sink {
+ ScanInPort si; ResetPort rst;
+ ScanRegister r {ScanInSource si; CaptureSource r; ResetValue 0;}
+ ScanOutPort so {Source r;} DataOutPort q {Source r;}}
+Module Top {ScanInPort si; ResetPort global; DataInPort enable;
+ ScanRegister bus {ScanInSource si; CaptureSource bus; ResetValue 0;}
+ DataRegister v {WriteDataSource 1'b0; WriteEnSource bus;}
+ LogicSignal reset {~v;}
+ DataMux gate SelectedBy reset {1'b0:global; 1'b1:1'b1;}
+ Instance a Of Sink {InputPort si=bus; InputPort rst=gate;}
+ ScanOutPort so {Source a.so;} DataOutPort q {Source a.q; Enable bus;}})";
+  for (int route = 0; route < 3; ++route) {
+    auto fixture = source;
+    if (route != 0) {
+      fixture.replace(fixture.find("SelectedBy reset"), 16,
+                      "SelectedBy enable");
+      fixture.replace(fixture.find("Enable bus"), 10, "Enable enable");
+    }
+    if (route == 2) {
+      const std::string scan =
+          "ScanRegister r {ScanInSource si; CaptureSource r;";
+      fixture.replace(fixture.find(scan), scan.size(),
+                      "DataRegister r {WriteDataSource 1'b0; WriteEnSource "
+                      "1'b0;");
+      fixture.replace(fixture.find("ScanOutPort so {Source r;"), 25,
+                      "ScanOutPort so {Source si;");
+    }
+    pattern::Design design;
+    design.AddIcl("pending-reset.icl", fixture);
+    const auto netlist = pattern::Elaborate(design, "Top");
+    for (const auto& initial : {"1", "x"}) {
+      for (const auto& expected : {"0", "1", "0bx"}) {
+        pattern::ScanScheduler scheduler(netlist);
+        scheduler.Reset();
+        scheduler.Assume("enable", "0");
+        scheduler.Assume("v", "1");
+        scheduler.Assume("bus", "0");
+        scheduler.Assume("a.r", initial);
+        size_t calls = 0;
+        bool rejected = false;
+        try {
+          scheduler.Apply({{"iRead", {"q", expected}, "pending reset", {}}},
+                          false, {}, true, false,
+                          [&](const auto&, const auto&) { ++calls; });
+        } catch (const std::runtime_error&) {
+          rejected = true;
+        }
+        Require(rejected && calls == 0 && scheduler.Value("a.r") == initial &&
+                    scheduler.Value("v") == "1" &&
+                    scheduler.Value("bus") == "0" &&
+                    scheduler.Value("enable") == "0",
+                "destructive reset preparation preserves pending storage and "
+                "publishes nothing");
+      }
+    }
+  }
+  for (bool safe_preparation : {false, true}) {
+    auto fixture = source;
+    if (safe_preparation) {
+      fixture.replace(fixture.find("InputPort rst=gate"), 18,
+                      "InputPort rst=global");
+    }
+    pattern::Design design;
+    design.AddIcl("safe-pending-reset.icl", fixture);
+    const auto netlist = pattern::Elaborate(design, "Top");
+    pattern::ScanScheduler scheduler(netlist);
+    scheduler.Reset();
+    scheduler.Assume("enable", "0");
+    scheduler.Assume("v", "1");
+    scheduler.Assume("bus", safe_preparation ? "0" : "1");
+    scheduler.Assume("a.r", "1");
+    size_t calls = 0;
+    scheduler.Apply({{"iRead", {"q", "0"}, "actual", {}},
+                     {"iWrite", {"bus", "1"}, "after capture", {}}},
+                    false, {}, true, false, [&](const auto&, const auto& bits) {
+                      ++calls;
+                      Require(bits == "1", "capture reports actual old data");
+                    });
+    Require(calls == 1 && scheduler.Value("v") == "0" &&
+                scheduler.Value("a.r") == (safe_preparation ? "1" : "0"),
+            "safe preparation and reset after capture remain allowed");
+  }
+}
+
 void TestFeedbackResetScheduling() {
   {
     pattern::Design design;
@@ -8209,6 +8294,7 @@ int main(int argc, char* argv[]) {
         return 0;
       }
       if (argc == 2 && std::string(argv[1]) == "--reset-backend") {
+        TestPendingResetObservations();
         TestDataFeedbackScheduling();
         TestFeedbackResetScheduling();
         TestDataResetCallbacks();
@@ -8292,6 +8378,7 @@ int main(int argc, char* argv[]) {
     TestStandaloneIdleClockGates();
     TestStandaloneIdleDataFill();
     TestDataFeedbackScheduling();
+    TestPendingResetObservations();
     TestFeedbackResetScheduling();
     TestDataResetCallbacks();
     TestUnreleasedDataFeedback();

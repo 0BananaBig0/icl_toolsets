@@ -7527,6 +7527,10 @@ class ScanScheduler::Impl {
       for (size_t time = 0; time < horizon; ++time) {
         Frame frame;
         frame.client_group = client_group;
+        Values unread_storage;
+        for (const auto& [id, readers] : pending_reads) {
+          unread_storage.emplace(id, state.at(id));
+        }
         SelectClients(frame, time);
         auto scan = context_.bool_val(true);
         auto any_drive = context_.bool_val(false);
@@ -7970,6 +7974,14 @@ class ScanScheduler::Impl {
         }
         if (data_reset_dependencies_) {
           SettleResets(&next, &fills, &event, &solver);
+        }
+        // Preparation resets must retain storage until its pending capture.
+        for (const auto& [id, previous] : unread_storage) {
+          for (size_t reader : pending_reads.at(id)) {
+            solver.add(z3::implies(!data_read_done.at(reader),
+                                   next.at(id).bits == previous.bits &&
+                                       next.at(id).known == previous.known));
+          }
         }
         for (const auto& [id, previous] : preserved) {
           if (!frame.loads.count(id)) continue;
