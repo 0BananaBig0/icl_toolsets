@@ -2408,7 +2408,21 @@ including every generator, retain their Task202 identities. Only three test
 files and the four rebuilt native test executables differ. No production,
 hardware eligibility, dependency, resource limit or performance claim changes.
 
-Four inherited findings are addressed; the candidate remainder is 38 minus 4 = 34.
-Independent review and integration remain pending. Evidence and exact fault
+Four inherited findings are resolved, leaving 34 inherited findings. The sole
+independent review found no Critical or Important issue and one new Minor: the
+scale assertion does not detect removal of an entire first apply group. That
+separate event-count gap is deferred, bringing the total to 35. Integration
+results follow below. Evidence and exact fault
 artifacts are retained under `build/regression-oracles-20261128/`. Broader
 inventory and excluded strict-coverage item1 remain unchanged.
+
+Task203 is merged and pushed to `master` as `50c6c54`. All 15 qualification
+gates and 8 merged-result checks pass on identical 4133 inputs, six packaged
+files and 44 products. All 40 unaffected executables, including the generators,
+remain unchanged; the two rebuilt normal native tests were copied to master.
+The review confirms all four inherited resolutions, with the one new Minor
+queued in `build/regression-oracles-20261128/follow-up-discovery.json`.
+All 117 stashes are preserved. The owned branch is retired; its qualified source
+archive, fault controls, review, ledger and helper copies remain under
+`build/regression-oracles-20261128/`. The reusable detached worktree and sibling
+ledgers remain available. Broader inventory and excluded coverage item1 remain open.

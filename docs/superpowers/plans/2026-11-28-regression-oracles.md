@@ -28,5 +28,12 @@
 
 ## Branch completion
 
-- [ ] One independent whole-branch review; regrade findings and declined areas, fix Critical/Important issues in one verified repair wave, defer Minors without rereview.
-- [ ] Merge into master, verify the actual merged result, push, retire only this branch and archive only this plan workspace. Complete the checkboxes with verified progress and continue the original inventory.
+- [x] One independent whole-branch review; regrade findings and declined areas, fix Critical/Important issues in one verified repair wave, defer Minors without rereview.
+- [x] Merge into master, verify the actual merged result, push, retire only this branch and archive only this plan workspace. Complete the checkboxes with verified progress and continue the original inventory.
+
+Completed at `e82a668`, merged and pushed as `50c6c54`. The independent review
+found 0 Critical, 0 Important and 1 new Minor finding. All four inherited
+resolutions are confirmed; 34 inherited plus 1 new finding remain deferred.
+All 15 qualification gates and 8 merged-result checks pass; 117 stashes and
+unaffected production/generator identities are preserved. Evidence and the
+queued event-count follow-up: `build/regression-oracles-20261128/`.
