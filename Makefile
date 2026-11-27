@@ -1077,6 +1077,7 @@ check check-static: pattern-symbolic-static-check
 .PHONY: pattern-scheduler-check
 pattern-scheduler-check: $(BUILD_DIR)/pattern_scheduler_test
 	@$(BUILD_DIR)/pattern_scheduler_test
+	@python3 tests/tests/src/pattern/test_benchmark_downstream_write_callbacks.py
 $(BUILD_DIR)/pattern_scheduler_test: tests/src/pattern_scheduler_test.cc $(SOLVER_OBJECTS) $(TAP_TEST_OBJECTS) $(BUILD_DIR)/pdl/pdl_document.o | check-z3
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $(Z3_CFLAGS) $^ $(TCL_LIBS) $(Z3_LIBS) -o $@
 
