@@ -2265,7 +2265,7 @@ inputs and 44 executables. Source packaging is checked again after recording
 these results. The one review repair pass restores the cared implicit IR check on write-only
 mixed TAP groups while retaining read-containing scope. Its four configuration
 regressions pass across source/flat/generated replay. One overview-prose Minor
-is deferred alongside 44 inherited Minors, for 45 total. Integration remains pending.
+is deferred alongside 44 inherited Minors, for 45 total.
 
 Three-round measurements cover 16/128 eight-bit registers in 12 matched
 parent/current points and 48 generation/continuation processes. Current unknown
@@ -2284,3 +2284,13 @@ the existing schema4 policy retains the separate native logical trace and prior
 provenance. This certifies that generated-program pair. Broader item6 and the
 other completion inventory remain open; item1 stays excluded, 44 inherited
 Minors remain deferred, and hardware, topology and timing support are unchanged.
+
+Task200 is merged and pushed to master at `930f8e2`, containing repaired task
+`2461a06`. All 16 merged-result checks pass on identical 4133 qualified inputs,
+25 copied normal/static executables and 19 sanitizer executables, with all 117
+stashes preserved. The final receipt records 48 qualification gates after the
+documentation-package refresh. The owned task branch is deleted; its ledger,
+16 rulings, helpers and source archive are retained under
+`build/write-only-read-scope-20261127/`. The reusable detached worktree and
+sibling ledgers are preserved. The one Important finding is fixed; 45 Minors
+remain deferred. Continue the queued automatic-primary scale work under item10.

@@ -32,16 +32,22 @@
 - [x] Use existing logical reconstruction on write-only applies. Rebuild and run the whole ordinary-read-scope module, native scheduler/readback, reset-dependency, feedback and independent-TAP checks. Expected: GREEN without changing explicit X, old-storage, native event or IR assertions.
 - [x] Refresh the one affected directional certificate using the existing schema4 current/reference vendor proof. Expected: two successful Tessent2026.2 exports, identical physical results, 77 offline directional checks pass and distinct current native logical trace retained.
 - [x] Run three-round 16/128-register changed-path measurements plus existing sparse-scale and feedback controls, fresh full make check, affected normal/static and leak-enabled suites, changed-C++ quality, corpus/editor and source package build/install. Expected: unchanged limits, explicit skips and exact source/product bindings.
-- [ ] Update guidance, commit the finalized selected diff and run task-done using python3 tests/.task200-check.py. Expected: all required qualification and artifact checks pass.
+- [x] Update guidance, commit the finalized selected diff and run task-done using python3 tests/.task200-check.py. Expected: all required qualification and artifact checks pass.
 
 ## One review repair pass
 
 - [x] Reproduce loss of the final-group tap2 cared capture comparison in four wiring/mode cases before repairing production code.
 - [x] Retain implicit IR checks on empty logical read scope, preserve mixed read-containing behavior and pass the focused regression.
 - [x] Run fresh complete qualification and measurements on final repaired sources; no reviewed executable evidence is reused after the C++ change.
-- [ ] Commit the repaired selected diff and run task-done; defer the overview Minor, for 45 total.
+- [x] Commit the repaired selected diff and run task-done; defer the overview Minor, for 45 total.
 
 ## Branch completion
 
 - [x] One independent review of 55d1732 completed: 0 Critical, 1 Important for the single repair pass, 1 new Minor deferred. No repaired-code re-review.
-- [ ] Merge, verify merged result, push, retire only the owned branch and archive only this workspace; continue remaining inventory.
+- [x] Merge, verify merged result, push, retire only the owned branch and archive only this workspace; continue remaining inventory.
+
+Task200 integrated as `930f8e2` after 16 passing merged checks, then pushed and
+its owned branch retired. Preserve the reusable detached worktree and sibling
+ledgers; archive only this plan workspace and owned helpers. Final qualification:
+48/48 gates, 227 Python suites, 3554 tests and five optional reference skips;
+45 deferred Minors.
