@@ -2628,3 +2628,40 @@ qualified source archive, work probes, review, ledger and helper copies remain
 under `build/fanout-replay-inputs-20261128/`. The reusable detached worktree and
 sibling ledgers remain available. Broader inventory and excluded coverage item1
 remain open.
+
+
+## Task209 clock evidence receipts
+
+The Task194 native receipt now identifies its native-only scope and points
+to the separate ten-job configured Tessent 2026.2 comparison. Its original
+bytes and a before/after correction record are retained; all actual historical
+test results stay unchanged. Task196 original measurement/comparison driver
+bytes remain unrecovered. Fresh receipts supersede that reproduction gap,
+with exact successful driver copies beside both receipts.
+
+All 45 original measurement rows are reproduced across three repeats and
+five replay forms: 225 native processes with identical literal inputs and
+complete outputs. The retained historical parent serves only ordinary
+controls; the current role uses the Task208 qualified producer. Existing
+10s/512MiB caps hold; the largest five-form time is 0.483253s and
+peak child RSS is 77400KiB. No new optimization or speedup is claimed.
+
+Nine prepared native inputs pass another 45 replay processes. One attached-unit
+case is native-only; eight actual vendor pairs cover 16 archived jobs. Their
+input manifests, configured Tcl, logs, successful statuses, exports and
+versions match; 16 current parser invocations reproduce the literal expected
+relative-operation traces. This is fresh native reproduction and archived
+Tessent 2026.2 attestation. No fresh vendor job, standalone export replay,
+raw omission dialect, hardware timing or device qualification is added.
+
+The initial private driver assumed the native-only control had a vendor job;
+that failed attempt and a successful comparison-only recovery are retained.
+The corrected combined driver then completed all stages successfully.
+All 4135 qualified inputs and 48 products remain identical; Task208 broad
+regression evidence remains historical. Source build/install and exact
+documentation package checks follow in the qualification receipt.
+
+Two inherited findings are candidate closures; 25 findings remain pending
+independent review and integration. Evidence:
+`build/clock-evidence-receipts-20261128/`. Broader inventory and excluded
+coverage item1 remain open.
