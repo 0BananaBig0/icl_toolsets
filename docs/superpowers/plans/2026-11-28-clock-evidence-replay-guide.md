@@ -30,6 +30,16 @@ implementation notes; use the same single fresh reviewer for technical review.
 
 - [x] Preserve parent identities, canonical drivers/evidence and exact undated sidecars. Add explicit local correction date/timezone while retaining original payload hashes and all other fields. Fact-check the correction date against the recorded Task209 execution date.
 - [x] Write the maintainer guide using existing driver logic. Execute its actual code block in a fresh owned scratch directory; require 270 native processes/16 parser calls, matching output bytes and unchanged canonical hashes. Retain the executed derived source, derivation and both source hashes. This documentation-only change requires fact checks, not production TDD.
-- [ ] Record the author walkthrough separately, preserve all 4135/48 identities, and run source build/install, exact four-member package checks and whitespace. Read the selected patch, commit under grouped policy and run task-done with tests/.task210-check.py.
-- [ ] One fresh reviewer first receives only guide/reader task, then examines plan/spec/evidence. Regrade findings; one Critical/Important repair wave if needed, no rereview; defer Minors.
-- [ ] Merge master, verify merged evidence/identities/package, push, archive only own ledger/helpers and retire branch while retaining the detached worktree.
+- [x] Record the author walkthrough separately, preserve all 4135/48 identities, and run source build/install, exact four-member package checks and whitespace. Read the selected patch, commit under grouped policy and run task-done with tests/.task210-check.py.
+- [x] One fresh reviewer first receives only guide/reader task, then examines plan/spec/evidence. Regrade findings; one Critical/Important repair wave if needed, no rereview; defer Minors.
+- [x] Merge master, verify merged evidence/identities/package, push, archive only own ledger/helpers and retire branch while retaining the detached worktree.
+
+Completed at `8ab14ee`, merged and pushed as `3072118`. One fresh context
+completed the isolated reader phase before technical review: 0 Critical,
+1 Important and 2 Minor issues. One verified repair wave fixes the Important;
+planned integration records close the reader-status Minor; 1 new Minor
+remains deferred. Two inherited resolutions; 26 findings remain. Six
+qualification gates and three merged-result checks pass. The final guarded
+author walkthrough passes; the earlier isolated reader covers the unchanged
+native body. No rereview; 117 stashes preserved. Evidence:
+`build/clock-evidence-replay-guide-20261128/`.

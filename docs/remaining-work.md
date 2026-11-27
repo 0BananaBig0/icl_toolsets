@@ -2698,11 +2698,29 @@ The author executed the literal published command successfully: 270 native
 replay processes and 16 parser calls reproduce all expected outputs, with
 the existing 10s/512MiB bounds. All 2617 canonical file hashes remain unchanged.
 The raw walkthrough source, log and 1268 result files are retained. This is
-an author self-check; independent reader verification is pending.
+an author self-check. A fresh reader then received only the guide and reader
+task, executed its command successfully and preserved the same canonical files.
+That reader run covers 270 native processes and 16 parser calls before the
+assertion preflight fix; the native replay body remains unchanged. The final
+guarded command passes a fresh author walkthrough, and optimized Python is
+rejected before workspace access. Two preflight methods pass RED-to-GREEN.
 
 All 4135 qualified inputs and 48 products remain identical. Source build/install
 and exact four-member package checks follow in the qualification receipt.
-Two inherited follow-ups are candidate closures; 25 findings remain pending
-independent review and integration. Evidence:
+The two inherited handoff findings are resolved. The sole independent review
+found 0 Critical, 1 Important and 2 Minor issues. The Important assertion-
+optimization bypass is fixed in one test-first repair wave. The reader-status
+Minor is closed by the planned integration record; 1 new Minor remains,
+and 26 findings remain deferred. Integration results follow below. Evidence:
 `build/clock-evidence-replay-guide-20261128/`. Broader inventory and excluded
+coverage item1 remain open.
+
+Task210 is merged and pushed to `master` as `3072118`. All six qualification
+gates and three merged-result checks pass on identical 4135 inputs, 48 products
+and four package members. The final guarded author command and the earlier
+isolated reader native-body walkthrough pass; no reviewer rerun occurred.
+The guide, original/derived sources, logs, dated/undated sidecars, test-first
+repair and review are retained under `build/clock-evidence-replay-guide-20261128/`.
+All 117 stashes are preserved. The owned branch is retired; the reusable detached
+worktree and sibling ledgers remain available. Broader inventory and excluded
 coverage item1 remain open.
