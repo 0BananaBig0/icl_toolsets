@@ -2200,17 +2200,45 @@ next task under original items3/6. The broader inventory remains open.
 
 ## Task199 pending reset observations
 
-Task199 repairs ordinary reset preparation that erased pending ScanRegister
-or DataRegister observations in the mixed planner. Frame-entry storage is
-retained until capture, including pin-triggered and acyclic-data-triggered
-resets. Impossible preparation fails atomically; safe preparation, later
-updates and actual mismatching observations remain supported. All 37 final
-qualification commands pass: 227 Python suites reporting 3534 tests, 21
-leak-enabled checks, six C++ quality checks, corpus/editor checks and source
-packaging. Exact hashes bind 4126 inputs and 44 executables. Five optional
-reference tests are skipped. The 72-point feedback matrix passes all 240
-candidate/current forms and all 24 parent controls; 36 additional matched
-processes qualify the changed mixed path with up to 128 pending 8-bit registers.
-Independent review and integration remain pending. Original items 3/6 and the
-broader inventory remain open; item 1 is excluded and 44 inherited Minors remain
-preserved.
+Preparation must preserve each requested logical observation from the start of
+its apply, including implicit TAP instruction setup. At capture, the scheduler
+compares the requested bits with original storage under current access controls.
+This covers direct ScanRegister CaptureSource, primary reads, selected clients,
+and data selectors such as DataMux and OneHot groups. Unobserved word bits and
+inactive physical observation-route arms may change during safe preparation.
+A selected capture precedes its frame's later updates. Expected 0, 1 and X never
+supply actual data; impossible preparation fails atomically and preserves prior
+outputs, state and callbacks.
+
+
+The repaired implementation passes 40 qualification gates: 227 Python suites
+reporting 3548 tests, 22 leak-enabled native/CLI/corpus checks, 12 C++ quality
+checks, grammar/editor checks and source-package build/install verification.
+Five optional reference cases are skipped. Exact hashes bind 4126 production
+and test inputs and 44 executables. Source packaging is checked again after
+recording these results. The initial 37-command cohort remains historical
+pre-review evidence, separate from this repaired qualification.
+
+All four Critical and two Important review findings are fixed in one test-first
+pass, including the selected-client, direct-capture, partial-bit, inactive-route,
+selector and split-TAP-prefix cases. A concrete OneHot repair regression also
+passes. No repaired-code re-review was used; the 44 inherited Minors remain
+deferred. Integration remains pending.
+
+Three-round changed-path measurements pass 12 matched parent/current points
+and 36 source/flat/generated processes with up to 128 pending 8-bit registers.
+The largest current run is 0.720 seconds/148816 KiB, within 10 seconds/512 MiB.
+The separate 72-point feedback matrix passes all 240 candidate/current forms
+and all 24 parent controls; its largest current run is 2.024 seconds/187220 KiB.
+These are bounded resource measurements, with no speedup claim. Exact commands,
+inputs, product hashes and outputs are retained under
+`build/pending-reset-observations-20261127/`.
+
+No new vendor, live-device, topology or timing support is claimed, and existing
+resource bounds remain unchanged.
+
+A separate pre-existing replay-history defect adds an unrequested all-X scan read
+on regeneration of an always-active scan lane. Parent/current reproductions are
+retained under `build/pending-reset-observations-20261127/replay-diagnosis/` and
+queued immediately after Task199. The broader inventory remains open; item 1
+remains excluded.

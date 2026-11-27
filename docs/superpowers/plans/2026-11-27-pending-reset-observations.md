@@ -4,7 +4,7 @@
 
 **Goal:** Preserve pending storage observations through ordinary reset preparation.
 
-**Architecture:** Snapshot only pending register storage before each mixed frame. Enforce retention after ordinary reset settling until the selected capture, retaining existing intermediate feedback constraints.
+**Architecture:** Compare requested logical observations at capture with original storage under current access controls. Retain the original snapshot across split TAP setup and existing intermediate feedback constraints.
 
 **Tech Stack:** Existing C++/Z3 scheduler and native/Python regression framework.
 
@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- Existing resource limits, event formats and public interfaces remain unchanged.
+- Existing resource limits, event formats and public CLI/PDL/observation interfaces remain unchanged; SymbolicNetwork gains a defaulted internal access-context argument.
 - Preserve 117 stashes, foreign worktrees and 44 inherited deferred Minors; item 1 excluded.
 - New test scripts belong under root tests/; maintain existing tests in place.
 
@@ -36,7 +36,22 @@
 - [x] Run focused Python/native suites, normal/static builds, full make check, affected leak-enabled sanitizers, changed-C++ quality, reset/feedback scaling and source packaging. Freeze and check exact input/product identities; record actual command exits and optional skips.
 - [x] Update usage/tracker and commit finalized selected diff with grouped messages; run task-done with `python3 tests/.task199-check.py`. Expected: all final required checks pass on exact inputs/products.
 
+## One review repair pass
+
+The independent review of 084a827 found four Critical and two Important issues.
+The single repair pass replaces the superseded whole-word frame hold above:
+
+- [x] Reproduce selected-client, direct CaptureSource, partial-bit, inactive-route,
+  data-selector and split-TAP-prefix findings in maintained tests before repair.
+- [x] Compare requested bits against original storage at capture, including direct
+  scan CaptureSource, and pass the same origin through implicit TAP setup.
+- [x] Retain current forwarding-port availability while preserving original
+  OneHot selection/payload enables; add and pass its concrete repair regression.
+- [x] Run fresh full qualification on the repaired sources, including normal/static
+  and leak-enabled independent-TAP cases, 12 C++ quality checks and both scale sets.
+- [ ] Record all six dispositions, commit the reviewed repair and run task-done.
+
 ## Branch completion
 
-- [ ] One fresh independent whole-branch review; regrade findings/declined areas, one Critical/Important RED→GREEN repair pass if needed, defer Minors.
+- [x] One fresh independent whole-branch review completed on 084a827; regrade all six findings for one Critical/Important repair pass, retain 44 inherited Minors. No repaired-code re-review.
 - [ ] Merge, verify merged result, push, detach reused worktree, delete only owned merged branch and archive only this workspace. Expected: clean aligned master, 117 stashes preserved; continue remaining inventory.

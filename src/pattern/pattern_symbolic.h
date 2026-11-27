@@ -6,6 +6,7 @@
 #include <z3++.h>
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
@@ -25,10 +26,13 @@ struct SymbolicValue {
 // Unassigned terminals are unknown, never existentially free hardware state.
 class SymbolicNetwork {
  public:
+  // An observation view can retain capture-time port availability separately
+  // from its original storage. The borrowed access context must stay valid.
   SymbolicNetwork(const Netlist& netlist, z3::context& context,
                   std::map<size_t, SymbolicValue> assignments,
                   std::string global_resets = "xx",
-                  const std::map<size_t, SymbolicValue>* shifts = nullptr);
+                  const std::map<size_t, SymbolicValue>* shifts = nullptr,
+                  SymbolicNetwork* access_context = nullptr);
   SymbolicValue Value(size_t node, bool scan = false);
   SymbolicValue Read(const BitReference& bit, bool scan = false);
 
@@ -52,6 +56,9 @@ class SymbolicNetwork {
   std::vector<Key> derived_;
   bool has_shift_state_ = false;
   std::string global_resets_;
+  SymbolicNetwork* access_context_;
+  std::map<size_t, SymbolicValue> observation_assignments_;
+  std::unique_ptr<SymbolicNetwork> observation_payloads_;
   OneHotReadResolver one_hot_;
 };
 }  // namespace pattern
