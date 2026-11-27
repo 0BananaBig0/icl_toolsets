@@ -2456,8 +2456,18 @@ their Task203 identities; only the three Python tests differ. No producer,
 hardware eligibility, dependency, limit, vendor or performance claim changes.
 The unrelated full regression/native sanitizer/vendor matrices are not rerun.
 
-Four inherited findings are addressed; the candidate remainder is 35 minus 4 = 31.
-Independent review and integration remain pending. Exact drivers, inputs, outputs,
+All four inherited findings are resolved. The sole independent review found
+0 Critical, 0 Important and 0 Minor issues and confirmed the four closures,
+leaving 31 inherited findings. Integration results follow below. Exact drivers, inputs, outputs,
 protected fixture receipts and fault controls are retained under
 `build/replay-boundaries-20261128/`. Broader inventory and excluded coverage item1
 remain open.
+
+Task204 is merged and pushed to `master` as `6d13b02`. All 12 qualification
+gates and 8 merged-result checks pass on identical 4133 inputs, seven required
+package members and all 44 products. The merged normal/static runs report
+56 tests across six CLI reports. All 117 stashes are preserved. The owned
+branch is retired; its qualified source archive, fault controls, review, ledger
+and helper copies remain under `build/replay-boundaries-20261128/`. The reusable
+detached worktree and sibling ledgers remain available. Broader inventory and
+excluded coverage item1 remain open.

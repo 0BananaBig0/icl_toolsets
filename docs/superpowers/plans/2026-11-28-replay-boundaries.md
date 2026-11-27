@@ -27,5 +27,11 @@
 
 ## Branch completion
 
-- [ ] One independent whole-branch review; regrade findings and declined areas, one verified Critical/Important repair wave if needed, defer Minors without rereview.
-- [ ] Merge into master, verify actual merged identities and affected behavior, push, retire only this branch and archive only this workspace. Mark verified progress and continue the original inventory.
+- [x] One independent whole-branch review; regrade findings and declined areas, one verified Critical/Important repair wave if needed, defer Minors without rereview.
+- [x] Merge into master, verify actual merged identities and affected behavior, push, retire only this branch and archive only this workspace. Mark verified progress and continue the original inventory.
+
+Completed at `83bc217`, merged and pushed as `6d13b02`. The independent review
+found 0 Critical, 0 Important and 0 Minor issues and confirmed all four inherited
+resolutions; 31 inherited findings remain deferred. All 12 qualification gates
+and 8 merged-result checks pass; 117 stashes and all production identities are
+preserved. Evidence: `build/replay-boundaries-20261128/`.
