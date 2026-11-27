@@ -4,6 +4,7 @@ import json
 import time
 import unittest
 
+from benchmark_fixed_scan_fanout_work import fixture
 import test_shared_scan_inputs as helpers
 
 SHARED = helpers.NETWORK.replace('ScanInSource si; CaptureSource b;',
@@ -196,25 +197,9 @@ Module Chains {{
         for count in (2, 8, 32):
             for width in (4, 64, 256):
                 with self.subTest(count=count, width=width):
-                    tail = 9 if width == 4 else (9 << (width // 2)) | 9
-                    source = ('Module Chains {ScanInPort si; '
-                              f'ScanRegister a[{width-1}:0] {{ScanInSource si; '
-                              'CaptureSource a; ResetValue 0;} ScanOutPort oa {Source a[0];}')
-                    body = 'iProcsForModule Chains\niReset; iWrite a 13; '
-                    expected = [(b'a', f'0b{13:0{width}b}'.encode())]
-                    reads = 'iRead a 0bx; '
-                    for i in range(count-1):
-                        w = width if i % 2 else width // 2
-                        value = tail if w == width else tail >> (width - w)
-                        source += (f'ScanRegister r{i}[{w-1}:0] {{ScanInSource a[0]; '
-                                   f'CaptureSource r{i}; ResetValue 0;}} '
-                                   f'ScanOutPort o{i} {{Source r{i}[0];}}')
-                        body += f'iWrite r{i} {value}; '
-                        expected.append((f'r{i}'.encode(), f'0b{value:0{w}b}'.encode()))
-                        reads += f'iRead r{i} 0bx; '
-                    source += '}\n'
+                    source, body, expected = fixture(count, width)
                     start = time.monotonic()
-                    output = self.replay(source, body + 'iApply; ' + reads + 'iApply;\n')
+                    output = self.replay(source, body)
                     elapsed = time.monotonic() - start
                     self.assertEqual(output.splitlines().count(b'iApply'), 2)
                     first_group = output.split(b'iApply\n', 1)[0].splitlines()
