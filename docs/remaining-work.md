@@ -2531,7 +2531,17 @@ follow in the qualification receipt: 4133 input paths with only two changed,
 and 48 rebuilt/qualified products. Task205 full native/event evidence remains
 historical; no new full native/event/vendor/performance claim is made.
 
-Two inherited findings are addressed; the candidate remainder is 32 minus 2
-= 30. Independent review and integration remain pending. Evidence:
+The two inherited diagnostic findings are resolved. The sole independent review
+found 0 Critical, 0 Important and 0 new Minor issues; 30 findings remain
+deferred. Integration results follow below. Evidence:
 `build/period-diagnostic-edits-20261128/`. Broader inventory and excluded
 coverage item1 remain open.
+
+Task206 is merged and pushed to `master` as `2fd5e0b`. All 22 qualification
+gates and six merged-result checks pass on identical 4133 inputs, five required
+package members and 48 qualified products. Four merged CLI reports contain
+132 tests. All 117 stashes are preserved. The owned branch is retired; its
+qualified source archive, review, ledger and helper copies remain under
+`build/period-diagnostic-edits-20261128/`. The reusable detached worktree and
+sibling ledgers remain available. Broader inventory and excluded coverage item1
+remain open.
