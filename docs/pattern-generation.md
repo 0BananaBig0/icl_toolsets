@@ -12025,8 +12025,20 @@ regression, sanitizer matrix and vendor jobs are not rerun for these Markdown
 corrections; no new behavior or performance claim is made.
 
 The author walkthrough covers the seven affected generator-user decisions and
-is explicitly labeled author self-check. Independent technical/reader review
-and integration remain pending. Seven of 45 inherited Minors are addressed;
-the candidate remainder is 38, with broader inventory and excluded item1 unchanged.
+is explicitly labeled author self-check. The independent technical/reader review and integration results are recorded below. Seven of 45 inherited Minors are resolved;
+38 inherited findings remain, with broader inventory and excluded item1 unchanged.
 Receipts, finding dispositions and the walkthrough are retained under
 `build/deferred-guide-errata-20261128/`.
+
+Task202 is merged and pushed to `master` as `1dd0eb4`. The sole independent
+technical/reader review found 0 Critical, 1 Important and 1 Minor finding.
+The incomplete spacing is fixed in one qualified factual RED/GREEN pass;
+the plan-checkbox Minor is closed by the planned completion update. No second
+review is used. The 12 final gates include 3 fresh repair checks and 9 reused
+behavioral checks bound to unchanged inputs/products; all 7 merged-result
+checks pass. Seven inherited findings are resolved and 38 remain deferred.
+All 117 stashes, 4133 production/test inputs and 44 executable identities are
+preserved. The owned task branch is retired; its qualified source archive,
+review, ledger and helper copies remain under `build/deferred-guide-errata-20261128/`.
+The reusable detached worktree, sibling ledgers, broader inventory and excluded
+coverage item1 retain their status.

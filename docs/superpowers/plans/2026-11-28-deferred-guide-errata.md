@@ -23,11 +23,19 @@
 
 - [x] Match each finding to its current paragraph, implementation and retained review/evidence; record the seven-item disposition before editing.
 - [x] Correct requested versus incidental reset-held observations, component-specific retention, exact exponent cancellation, version-specific vendor claims, deferred versus retained factor validation, Task196 number spacing and operation-dependent temporary space.
-- [ ] Run existing normal/static read-scope, period and ordinary-clock capabilities plus native clock snapshots/policy. Verify unchanged tracked source/test inputs and all 44 qualified executable hashes. Check whitespace and build/install the source distribution containing the final documentation.
-- [ ] Perform an author walkthrough for the affected generator-user decisions and record actual results; preserve all historical counts and unresolved requirements.
-- [ ] Stage/read the full raw diff, write the grouped commit and run task-done with the artifact checker.
+- [x] Run existing normal/static read-scope, period and ordinary-clock capabilities plus native clock snapshots/policy. Verify unchanged tracked source/test inputs and all 44 qualified executable hashes. Check whitespace and build/install the source distribution containing the final documentation.
+- [x] Perform an author walkthrough for the affected generator-user decisions and record actual results; preserve all historical counts and unresolved requirements.
+- [x] Stage/read the full raw diff, write the grouped commit and run task-done with the artifact checker.
 
 ## Completion
 
-- [ ] One independent full-branch review, including technical facts and the affected reader decisions. Regrade all findings and declined areas; one Critical/Important repair pass if needed, then no re-review; defer new Minors.
-- [ ] Merge into master, check the actual merged documentation/source identities and affected capabilities, push, retire only this task branch and archive only this plan workspace.
+- [x] One independent full-branch review, including technical facts and the affected reader decisions. Regrade all findings and declined areas; one Critical/Important repair pass if needed, then no re-review; defer new Minors.
+- [x] Merge into master, check the actual merged documentation/source identities and affected capabilities, push, retire only this task branch and archive only this plan workspace.
+
+Completed at `dd00083`, repaired at `ad3b102`, merged and pushed as
+`1dd0eb4`. The sole independent technical/reader review found 0 Critical,
+1 Important and 1 Minor finding. The Important spacing correction passes
+one factual RED/GREEN repair wave; the checkbox Minor is closed by this
+completion update. All 12 final qualification gates and 7 merged-result checks
+pass. Seven inherited findings are resolved, 38 remain deferred, and all
+117 stashes are preserved. Evidence: `build/deferred-guide-errata-20261128/`.

@@ -2363,8 +2363,21 @@ and broader original inventory remain open; coverage item1 stays excluded.
 
 ## Task202 deferred guide errata
 
-Seven source-backed documentation findings are addressed; the candidate deferred
+Seven source-backed documentation findings are resolved; the deferred
 count is 45 minus 7 = 38. See [the guide correction record](pattern-generation.md#deferred-guide-errata-task202)
-for the affected contracts and 12-check qualification. Independent review and
-integration remain pending. Historical counts, broader inventory and excluded
+for the affected contracts and 12-check qualification. The independent review and
+integration results are recorded below. Historical counts, broader inventory and excluded
 coverage item1 retain their status. Evidence: `build/deferred-guide-errata-20261128/`.
+
+Task202 is merged and pushed to `master` as `1dd0eb4`. The sole independent
+technical/reader review found 0 Critical, 1 Important and 1 Minor finding.
+The incomplete spacing is fixed in one qualified factual RED/GREEN pass;
+the plan-checkbox Minor is closed by the planned completion update. No second
+review is used. The 12 final gates include 3 fresh repair checks and 9 reused
+behavioral checks bound to unchanged inputs/products; all 7 merged-result
+checks pass. Seven inherited findings are resolved and 38 remain deferred.
+All 117 stashes, 4133 production/test inputs and 44 executable identities are
+preserved. The owned task branch is retired; its qualified source archive,
+review, ledger and helper copies remain under `build/deferred-guide-errata-20261128/`.
+The reusable detached worktree, sibling ledgers, broader inventory and excluded
+coverage item1 retain their status.
