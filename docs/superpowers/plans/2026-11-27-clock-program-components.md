@@ -75,7 +75,7 @@ recursive reset previews; real operations keep existing validation.
 
 - [x] One independent whole-branch review; grade all findings/declined areas,
   one Critical/Important test-first repair pass if needed; defer Minors.
-- [ ] Merge into parent master, verify merged inputs/products and focused checks,
+- [x] Merge into parent master, verify merged inputs/products and focused checks,
   push, detach the retained worktree, safely delete only this owned branch and
   archive only this plan's workspace. Expected: clean aligned master/origin and
   unchanged117 stashes; continue the remaining inventory.

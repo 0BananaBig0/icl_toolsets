@@ -11742,5 +11742,10 @@ Fifteen fresh native vendor producer runs reproduce all five forms.
 Every actual vendor model, program and script byte is unchanged, so
 the six recorded Tessent jobs remain applicable after current binary,
 frozen-input and export/trace identities are rechecked.
-Integration remains pending. Evidence:
+Task197 is merged at 3ba4cad and pushed to master. All nine
+merged-result checks pass on 4,125 identical inputs and ten copied
+qualified executables. The task branch is deleted, the reused
+worktree is detached and all 117 stashes are preserved. The broader
+inventory and 44 deferred Minors remain open; item1 stays excluded.
+Evidence:
 build/clock-program-components-20261127/ (pre-review/ retains the earlier bundle).
