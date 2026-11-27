@@ -2724,3 +2724,28 @@ repair and review are retained under `build/clock-evidence-replay-guide-20261128
 All 117 stashes are preserved. The owned branch is retired; the reusable detached
 worktree and sibling ledgers remain available. Broader inventory and excluded
 coverage item1 remain open.
+
+
+## Task211 clock replay active-script cleanup
+
+The published wrapper now unlinks its exact owned active script in finally
+when writing, scratch copying or child waiting raises. Available scratch
+files and logs remain, and the original exception propagates. The assertion
+preflight and native replay commands remain unchanged.
+
+Two probes execute the real published code with real active/scratch files,
+injecting only boundary copy/wait exceptions. Both fail on the parent because
+the active file remains; both pass after cleanup. Recorded exception types
+and messages match, and available diagnostic files are retained. The existing
+two-method optimization preflight regression also passes. Private mirrored
+tests are archived before packaging.
+
+The optimized complete command rejects before scratch access; the default
+command passes 270 native processes and 16 parser calls with matching outputs
+and unchanged 10s/512MiB bounds. All 2617 canonical hashes remain unchanged.
+All 4135 qualified inputs and 48 products remain identical; broader native
+qualification remains historical. Source build/install and exact four-member
+package checks follow in the receipt. One inherited finding is a candidate
+closure; 25 findings remain pending independent review and integration.
+Evidence: `build/clock-replay-cleanup-20261128/`. Broader inventory and excluded
+coverage item1 remain open.
