@@ -75,11 +75,17 @@ iNote [iGetStatus]
         source = source.replace('SelectedBy open','SelectedBy held')
         source = source.replace('InputPort sel = open;','InputPort sel = held;')
         source = source.replace("1'b1: child.so;","1'b1: ~child.so;")
-        self.continued(source,'''iReset
-iScan child.local 8 -si 165 -so 0bx; iApply
+        generated,_ = self.continued(source,'''iReset
+iScan child.local 8 -si 165 -so 0b01x0x1x0; iApply
 ''','''iNote [iGetReadData child.local -bin]; iNote [iGetMiscompares child.local -bin]
-iNote [iGetStatus]
-''',[b'0bxxxxxxxx',b'0b00000000',b'0'])
+if {![catch {iGetStatus -clear}]} {error {unknown status returned}}
+if {![catch {iGetStatus}]} {error {unknown status cleared}}
+iNote unknown
+''',[b'0bxxxxxxxx',b'0bxx0x0x0x',b'unknown'])
+        scans = [line.split() for line in generated.splitlines() if line.startswith(b'iScan ')]
+        self.assertEqual(len(scans),1)
+        self.assertEqual(scans[0][:3],[b'iScan',b'client',b'9'])
+        self.assertEqual(scans[0][scans[0].index(b'-so')+1],b'0b10x1x0x1x')
 
     def test_modeled_child_prepares_without_activating_opaque_sibling(self):
         generated,_ = self.continued(mixed(),'''iReset
