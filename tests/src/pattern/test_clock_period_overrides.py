@@ -371,6 +371,79 @@ iReset; iState mode 0; iClock cell.out[4]; iRunLoop 3 -sck cell.out[4]
                 self.rejected(source, 'iClockOverride oscillator -period 20ns; ' +
                               first + tail, diagnostic)
 
+    def test_lowered_neighbors_preserve_partial_override_guards(self):
+        for declaration in ('ToClockPort anchor {Period 7ns;}',
+                            "ToClockPort anchor {Source 1'b0;}"):
+            with self.subTest(declaration=declaration):
+                source = ('Module Top {ClockPort root; Alias forward = root; '
+                          'ToClockPort out {Source forward;} '
+                          'ToClockPort osc {Period 10ns;}' + declaration + '}')
+                self.rejected(source, '''iClockOverride osc -period 15ns
+iClockOverride out -source anchor
+iClockOverride anchor -freqDivider 5
+iClockOverride out -freqDivider 2
+iClock out; iRunLoop 3 -sck out
+''', 'representable clock-port source')
+
+    def test_unsupported_default_clock_sources_remain_guarded(self):
+        for default, declarations in (
+                ('data', ''), ('ref', ''),
+                ('forward', 'Alias forward = data;'),
+                ('forward', 'Alias forward = ref;'),
+                ('choose', "ClockMux choose SelectedBy 1'b0 {1'b0:data;}"),
+                ('choose', "ClockMux choose SelectedBy 1'b0 {1'b0:ref;}"),
+                ('choose', "ClockMux choose SelectedBy 1'b0 {1'b0:1'b0;}")):
+            with self.subTest(default=default, declarations=declarations):
+                source = ('Module Top {DataInPort data; TCKPort ref; '
+                          'ToClockPort osc {Period 10ns;}' + declarations +
+                          'ToClockPort out {Source ' + default + ';}}')
+                self.rejected(source, '''iClockOverride osc -period 15ns
+iClockOverride out -freqDivider 2
+''', 'representable clock-port source')
+
+    def test_mixed_clock_mux_keeps_viable_choice(self):
+        source = '''Module Top {ClockPort root; DataInPort data; DataInPort mode;
+ ClockMux choose SelectedBy mode {1'b0:root;1'b1:data;}
+ ToClockPort out {Source choose;} ToClockPort osc {Period 10ns;}}'''
+        output = self.replay(source, '''iState mode 0
+iClockOverride osc -period 15ns; iClockOverride out -freqDivider 2
+iClock out; iRunLoop 3 -sck out
+''')
+        self.assertIn('iClock root\niRunLoop 6 -sck root\n', output)
+        self.rejected(source, '''iState mode 1
+iClockOverride osc -period 15ns; iClockOverride out -freqDivider 2
+iClock out
+''', 'no supported system-clock source')
+
+    def test_wide_invalid_operands_do_not_expand_during_preparation(self):
+        source = 'Module Top {ToClockPort wide[1048575:0] {Period 10ns;}}'
+        for operand in ('wide', 'wide[1048575:0]'):
+            with self.subTest(operand=operand):
+                started = time.monotonic()
+                self.rejected(source, 'iClockOverride missing -period 1ns\n'
+                              'for {set i 0} {$i < 2048} {incr i} {'
+                              'iClockOverride ' + operand + ' -freqDivider 2}\n',
+                              'unknown PDL target missing')
+                elapsed = time.monotonic() - started
+                self.assertLess(elapsed, 2)
+                print(json.dumps(dict(invalid_clock_operand=operand,
+                                      width=1048576, updates=2048, seconds=elapsed)))
+        source = ('Module Top {ToClockPort wide[1048575:1] {Period 10ns;}'
+                  'ToClockPort wide[0] {Period 11ns;}}')
+        icl, pdl = self.files(source, 'iClock wide[0]; iRunLoop 1 -sck wide[0]\n')
+        self.run_tool(icl, pdl)
+        flat = (self.root / 'debug/Top.icl').read_text()
+        operand = 'n776964655b313034383537353a315d'
+        started = time.monotonic()
+        self.rejected(flat, 'iClockOverride missing -period 1ns\n'
+                      'for {set i 0} {$i < 512} {incr i} {'
+                      'iClockOverride ' + operand + ' -freqDivider 2}\n',
+                      'unknown PDL target missing')
+        elapsed = time.monotonic() - started
+        self.assertLess(elapsed, 2)
+        print(json.dumps(dict(invalid_clock_operand=operand,
+                              width=1048576, updates=512, seconds=elapsed)))
+
     def test_independent_clock_components_scale(self):
         for count in (2, 8, 32):
             for updates in (8, 128, 1024):

@@ -11695,7 +11695,7 @@ and definitions used by other clock paths. Vector bits remain separate, and
 procedure/reset previews copy the prepared policy. Future source connections
 participate in analysis without becoming live resource connections.
 
-Both generators pass 24 period methods, including ordinary controls followed by
+Both generators pass 28 period methods, including ordinary controls followed by
 the new mixed cases, per-bit hierarchy/procedure/reset replay, connected/future
 guards, output sentinels and unchanged complete-argument spelling. Native tests
 cover old/new root counts, independent policy copies, an unknown-selector held
@@ -11705,8 +11705,8 @@ both generators. The full frozen-source qualification passes.
 Three rounds cover 27 new matrix points and 18 matched parent/current ordinary
 controls: 45 points, 225 CLI processes and three Python runners. The matrix uses
 2/8/32 ordinary clock targets, 8/128/1024 partial updates and one independent
-retained oscillator. Each point meets 10 seconds/512 MiB; maxima are 0.301 seconds
-and 60,584 KiB runner/child RSS. Input/output bytes are captured before cleanup,
+retained oscillator. Each point meets 10 seconds/512 MiB; maxima are 0.368 seconds
+and 60,456 KiB runner/child RSS. Input/output bytes are captured before cleanup,
 and ordinary parent/current outputs are identical. Capture I/O and concurrent
 qualification are included; no isolated speedup is claimed.
 
@@ -11720,10 +11720,27 @@ original-model comparisons. Raw vendor omission semantics, standalone exported
 periods, phase and device timing remain unqualified. New measurement/comparison
 driver byte copies are stored beside their receipts and bound by hashes.
 All 39 qualification commands pass: 227 Python suite runs
-report 3,504 tests with five optional ANTLR skips. All 22 leak-enabled
+report 3,512 tests with five optional ANTLR skips. All 22 leak-enabled
 sanitizer checks and 12 changed-C++ quality checks pass, along with corpus,
 editor checks and source packaging. The manifest binds 4,125 inputs and
-44 executables. Full regression takes 1,685.152 seconds;
-packaging takes 54.547 seconds.
-Independent review and integration remain pending. Evidence:
-build/clock-program-components-20261127/.
+44 executables. Full regression takes 1,808.929 seconds;
+packaging takes 66.805 seconds.
+Independent review found zero Critical, three Important and three Minor
+issues. One test-first repair pass preserves guarded neighboring partial
+defaults, restricts lowering to potentially clock-driven sources while
+preserving viable mux choices, and skips invalid non-single-bit operands
+without expanding their declarations. Four new CLI methods pass on both
+generators, including output sentinels, two 1,048,576-bit/2,048-operation
+cases and a 512-operation encoded whole-vector case. Their earlier runs
+took about13.8seconds and9.3seconds. All three operand forms pass the
+2second bound;18 matched parent/current points peak at0.066seconds
+and49,928KiB runner/child RSS.
+Native policy-copy assertions also pass. The repaired source passes a
+fresh complete qualification; no second review was used. Three Minors
+are deferred, bringing the total to44.
+Fifteen fresh native vendor producer runs reproduce all five forms.
+Every actual vendor model, program and script byte is unchanged, so
+the six recorded Tessent jobs remain applicable after current binary,
+frozen-input and export/trace identities are rechecked.
+Integration remains pending. Evidence:
+build/clock-program-components-20261127/ (pre-review/ retains the earlier bundle).

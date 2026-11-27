@@ -73,7 +73,7 @@ recursive reset previews; real operations keep existing validation.
 
 ## Branch completion
 
-- [ ] One independent whole-branch review; grade all findings/declined areas,
+- [x] One independent whole-branch review; grade all findings/declined areas,
   one Critical/Important test-first repair pass if needed; defer Minors.
 - [ ] Merge into parent master, verify merged inputs/products and focused checks,
   push, detach the retained worktree, safely delete only this owned branch and

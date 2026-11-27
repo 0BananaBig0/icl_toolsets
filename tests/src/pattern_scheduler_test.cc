@@ -4113,6 +4113,7 @@ void TestClockProgramComponents() {
     ClockMux choose[5:4] SelectedBy mode {1'b0:root;1'b1:root;}
     ToClockPort out[5:4] {Source choose; FreqMultiplier 3; FreqDivider 2;}
     ToClockPort shared {Source root[7];}
+    ToClockPort anchor {Period 7ns;}
     ToClockPort isolated[65535:0] {Period 10ns;}
   })");
   const auto netlist = pattern::Elaborate(design, "Top");
@@ -4196,6 +4197,22 @@ void TestClockProgramComponents() {
               scheduler.Value("mode") == "0",
           "connected normalization failures preserve definitions, output and "
           "hardware after policy preparation");
+  program.pop_back();
+  program.push_back({"iClockOverride",
+                     {"out(4)", "-source", "anchor"},
+                     "component:anchor-source",
+                     {}});
+  program.push_back({"iClockOverride",
+                     {"anchor", "-freqDivider", "5"},
+                     "component:anchor-partial",
+                     {}});
+  copy.RetainClockPrograms(program);
+  Require(
+      copy.RetainsClockProgram("anchor") &&
+          copy.RetainsClockProgram("out(4)") &&
+          !clocks.RetainsClockProgram("out(4)"),
+      "unsupported neighboring partial defaults retain component validation "
+      "without changing another prepared copy");
 }
 void TestClockOverrideScale() {
   std::string source =

@@ -228,12 +228,49 @@ void SystemClocks::RetainClockPrograms(
     const std::vector<Operation>& operations) {
   lowered_programs_.clear();
   std::vector<Bit> periods, candidates;
+  std::vector<std::pair<Bit, BitReference>> default_sources;
   std::vector<std::pair<Bit, Bit>> changed_sources;
+  const auto single_bit_operand = [&](const std::string& text) {
+    const auto open = text.find_first_of("[(");
+    const auto colon = text.find(':', open);
+    if (open != std::string::npos && colon != std::string::npos) {
+      if (colon + 1 >= text.size()) {
+        throw std::runtime_error("non-single-bit clock operand");
+      }
+      int64_t left = 0, right = 0;
+      const auto a =
+          std::from_chars(text.data() + open + 1, text.data() + colon, left);
+      const auto b = std::from_chars(text.data() + colon + 1,
+                                     text.data() + text.size() - 1, right);
+      if (a.ec != std::errc{} || a.ptr != text.data() + colon ||
+          b.ec != std::errc{} || b.ptr != text.data() + text.size() - 1 ||
+          left != right) {
+        throw std::runtime_error("non-single-bit clock operand");
+      }
+    }
+    if (text.find_first_of("[(") == std::string::npos) {
+      const auto node = netlist_.node_ids.find(text);
+      const auto group = netlist_.port_groups.find(text);
+      if ((node != netlist_.node_ids.end() &&
+           netlist_.nodes[node->second].left !=
+               netlist_.nodes[node->second].right) ||
+          (group != netlist_.port_groups.end() &&
+           group->second.left != group->second.right)) {
+        throw std::runtime_error("non-single-bit clock operand");
+      }
+    }
+  };
+  const auto clock_target = [&](const std::string& text) {
+    single_bit_operand(text);
+    const auto name = ClockTargetName(text);
+    if (name != text) single_bit_operand(name);
+    return Target(name);
+  };
   for (const auto& operation : operations) {
     const auto& args = operation.arguments;
     if (operation.command != "iClockOverride" || args.empty()) continue;
     try {
-      const auto target = Target(ClockTargetName(args[0]));
+      const auto target = clock_target(args[0]);
       const auto& node = netlist_.nodes[target.first];
       if (node.kind != "ToClockPort") continue;
       if (args.size() > 1 && args[1] == "-period") {
@@ -244,23 +281,23 @@ void SystemClocks::RetainClockPrograms(
       for (size_t i = 1; i + 1 < args.size(); i += 2) {
         if (args[i] != "-source") continue;
         explicit_source = true;
-        changed_sources.emplace_back(target,
-                                     Target(ClockTargetName(args[i + 1])));
+        changed_sources.emplace_back(target, clock_target(args[i + 1]));
       }
       const auto source = node.inputs.find("Source");
-      if (!explicit_source && !node.clock_period &&
-          source != node.inputs.end()) {
-        const auto& bit = source->second.at(Offset(node, target.second));
-        if (bit.node < netlist_.nodes.size() &&
-            (bit.inverted || !ClockPort(netlist_.nodes[bit.node]))) {
-          candidates.push_back(target);
+      if (!explicit_source && !(node.clock_period && args.size() == 1)) {
+        const auto bit = source == node.inputs.end()
+                             ? BitReference{}
+                             : source->second.at(Offset(node, target.second));
+        if (bit.node >= netlist_.nodes.size() || bit.inverted ||
+            !ClockPort(netlist_.nodes[bit.node])) {
+          default_sources.emplace_back(target, bit);
         }
       }
     } catch (const std::runtime_error&) {
       // The real operation reports invalid operands in source order.
     }
   }
-  if (periods.empty() || candidates.empty()) return;
+  if (periods.empty() || default_sources.empty()) return;
   BuildSafety();
   std::map<Bit, std::set<Bit>> adjacent;
   const auto connect = [&](Bit a, Bit b) {
@@ -271,24 +308,43 @@ void SystemClocks::RetainClockPrograms(
     for (const auto& output : outputs) connect(source, output);
   }
   for (const auto& [target, source] : changed_sources) connect(target, source);
-  const auto closure = [&](const std::vector<Bit>& seeds) {
+  const auto closure = [&](const std::vector<Bit>& seeds, const auto& graph) {
     std::set<Bit> reached(seeds.begin(), seeds.end());
     std::vector<Bit> pending(reached.begin(), reached.end());
     for (size_t i = 0; i < pending.size(); ++i) {
-      const auto found = adjacent.find(pending[i]);
-      if (found == adjacent.end()) continue;
+      const auto found = graph.find(pending[i]);
+      if (found == graph.end()) continue;
       for (const auto& bit : found->second) {
         if (reached.insert(bit).second) pending.push_back(bit);
       }
     }
     return reached;
   };
-  const auto sensitive = closure(periods);
+  std::vector<Bit> roots;
+  for (const auto& [source, outputs] : fanout_) {
+    const auto& node = netlist_.nodes[source.first];
+    if ((node.kind == "ClockPort" && node.scope == 0 &&
+         !node.inputs.count("Source") &&
+         !node.inputs.count("DifferentialInvOf")) ||
+        (node.kind == "ToClockPort" && node.clock_period)) {
+      roots.push_back(source);
+    }
+  }
+  const auto viable = closure(roots, fanout_);
+  for (const auto& [target, source] : default_sources) {
+    if (!netlist_.nodes[target.first].clock_period &&
+        viable.count({source.node, source.index})) {
+      candidates.push_back(target);
+    } else {
+      periods.push_back(target);
+    }
+  }
+  const auto sensitive = closure(periods, adjacent);
   candidates.erase(
       std::remove_if(candidates.begin(), candidates.end(),
                      [&](Bit bit) { return sensitive.count(bit); }),
       candidates.end());
-  lowered_programs_ = closure(candidates);
+  lowered_programs_ = closure(candidates, adjacent);
 }
 bool SystemClocks::RetainsClockProgram(const std::string& target) const {
   if (lowered_programs_.empty()) return true;
