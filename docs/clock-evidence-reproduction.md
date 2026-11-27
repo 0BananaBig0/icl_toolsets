@@ -95,7 +95,9 @@ files; `run.log` contains the individual measurement and pair checks. The new
 measurement and comparison receipts retain another copy of the derived driver.
 Keep the scratch directory while auditing the results.
 
-On failure, inspect the printed scratch directory and `run.log`. Restore missing
+On failure, inspect the terminal traceback as well as the printed scratch
+directory and `run.log`. Preflight errors can occur before a scratch directory
+is printed; wrapper checks can fail after the child exits. Restore missing
 prerequisites or the matching qualified artifacts, then run the command again;
 it creates a new scratch directory. Do not clear canonical receipt directories
 or edit their driver copies to force a rerun.
