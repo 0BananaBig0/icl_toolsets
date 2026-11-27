@@ -10,6 +10,32 @@
 #include "utility/strong_components.h"
 
 namespace pattern {
+namespace {
+void AppendDependencySources(const NetlistNode& node, int64_t index,
+                             bool controls,
+                             std::vector<BitReference>* pending) {
+  const size_t position =
+      node.left >= node.right ? node.left - index : index - node.left;
+  for (const auto& [role, bits] : node.inputs) {
+    if (role != "SelectedBy" && bits.size() == node.Width()) {
+      pending->push_back(bits.at(position));
+    } else if (controls) {
+      pending->insert(pending->end(), bits.begin(), bits.end());
+    }
+  }
+  for (const auto& choice : node.choices) {
+    pending->push_back(choice.source.at(position));
+  }
+  for (size_t source = 0; source < node.one_hot_sources.size(); ++source) {
+    pending->push_back(node.OneHotSourceBit(source, position));
+  }
+  if (controls) {
+    for (const auto& term : node.logic) {
+      pending->insert(pending->end(), term.signals.begin(), term.signals.end());
+    }
+  }
+}
+}  // namespace
 DataReadRoutes::DataReadRoutes(const Netlist& netlist, DataReadMode mode) {
   constexpr size_t kMissing = std::numeric_limits<size_t>::max();
   struct Pending {
@@ -157,7 +183,8 @@ DataRegisterPlan::DataRegisterPlan(const Netlist& netlist) {
         implicit_controls.push_back(bit);
       }
     };
-    std::set<size_t> visited;
+    std::set<std::pair<size_t, int64_t>> visited;
+    std::set<size_t> expanded_controls;
     auto& sources = dependencies[id];
     while (!pending.empty()) {
       const auto ref = pending.back();
@@ -167,7 +194,7 @@ DataRegisterPlan::DataRegisterPlan(const Netlist& netlist) {
             "data-register dependency resource limit exceeded");
       }
       if (ref.node == std::numeric_limits<size_t>::max() ||
-          !visited.insert(ref.node).second) {
+          !visited.emplace(ref.node, ref.index).second) {
         continue;
       }
       const auto& source = netlist.nodes.at(ref.node);
@@ -180,25 +207,18 @@ DataRegisterPlan::DataRegisterPlan(const Netlist& netlist) {
           !source.inputs.count("Source")) {
         primary_inputs[id].insert(ref.node);
       }
-      for (const auto& [name, bits] : source.inputs) {
-        pending.insert(pending.end(), bits.begin(), bits.end());
-      }
-      for (const auto& choice : source.choices) {
-        pending.insert(pending.end(), choice.source.begin(),
-                       choice.source.end());
-      }
-      for (const auto& contributor : source.one_hot_sources) {
-        pending.insert(pending.end(), contributor.bits.begin(),
-                       contributor.bits.end());
-        for (const auto& condition : one_hot.Resolve(contributor)) {
-          implicit_control(condition.enable);
-          if (condition.signals) {
-            for (const auto& bit : *condition.signals) implicit_control(bit);
+      // Shared controls are expanded once per node, independent of word width.
+      const bool controls = expanded_controls.insert(ref.node).second;
+      AppendDependencySources(source, ref.index, controls, &pending);
+      if (controls) {
+        for (const auto& contributor : source.one_hot_sources) {
+          for (const auto& condition : one_hot.Resolve(contributor)) {
+            implicit_control(condition.enable);
+            if (condition.signals) {
+              for (const auto& bit : *condition.signals) implicit_control(bit);
+            }
           }
         }
-      }
-      for (const auto& term : source.logic) {
-        pending.insert(pending.end(), term.signals.begin(), term.signals.end());
       }
     }
     for (size_t source : sources) consumers[source].push_back(id);
@@ -263,7 +283,8 @@ DataRegisterPlan::DataRegisterPlan(const Netlist& netlist) {
     const auto& node = netlist.nodes[target];
     if (!node.reset) continue;
     std::vector<BitReference> pending{*node.reset};
-    std::set<size_t> visited;
+    std::set<std::pair<size_t, int64_t>> visited;
+    std::set<size_t> expanded_controls;
     while (!pending.empty()) {
       const auto ref = pending.back();
       pending.pop_back();
@@ -272,7 +293,7 @@ DataRegisterPlan::DataRegisterPlan(const Netlist& netlist) {
             "data-register reset dependency resource limit exceeded");
       }
       if (ref.node == std::numeric_limits<size_t>::max() ||
-          !visited.insert(ref.node).second) {
+          !visited.emplace(ref.node, ref.index).second) {
         continue;
       }
       const auto& source = netlist.nodes.at(ref.node);
@@ -292,26 +313,18 @@ DataRegisterPlan::DataRegisterPlan(const Netlist& netlist) {
         }
         continue;
       }
-      for (const auto& [name, bits] : source.inputs) {
-        pending.insert(pending.end(), bits.begin(), bits.end());
-      }
-      for (const auto& choice : source.choices) {
-        pending.insert(pending.end(), choice.source.begin(),
-                       choice.source.end());
-      }
-      for (const auto& contributor : source.one_hot_sources) {
-        pending.insert(pending.end(), contributor.bits.begin(),
-                       contributor.bits.end());
-        for (const auto& condition : one_hot.Resolve(contributor)) {
-          pending.push_back(condition.enable);
-          if (condition.signals) {
-            pending.insert(pending.end(), condition.signals->begin(),
-                           condition.signals->end());
+      const bool controls = expanded_controls.insert(ref.node).second;
+      AppendDependencySources(source, ref.index, controls, &pending);
+      if (controls) {
+        for (const auto& contributor : source.one_hot_sources) {
+          for (const auto& condition : one_hot.Resolve(contributor)) {
+            pending.push_back(condition.enable);
+            if (condition.signals) {
+              pending.insert(pending.end(), condition.signals->begin(),
+                             condition.signals->end());
+            }
           }
         }
-      }
-      for (const auto& term : source.logic) {
-        pending.insert(pending.end(), term.signals.begin(), term.signals.end());
       }
     }
   }

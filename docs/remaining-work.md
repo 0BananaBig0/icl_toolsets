@@ -2171,11 +2171,21 @@ scan resets and explicit controller/clock contexts. Existing limits remain;
 this increment makes no timed, physical or vendor-equivalence claim. Item1 is
 excluded,117 stashes and44 inherited deferred Minors are preserved.
 
-Final qualification passes 35 commands: 227 Python suites reporting 3524 tests,
+Pre-review qualification passed 35 commands: 227 Python suites reporting 3524 tests,
 21 leak-enabled sanitizer checks, 24 changed-C++ quality checks, corpus/editor
 checks and source packaging. Exact identities bind 4126 inputs and 44 products.
 The 72-point matrix passes all 240 candidate/current replay forms within the
 existing limits; six parent controls complete all forms and 18 retain measured
 budget misses. Five optional reference tests remain skipped in this full run;
-no new vendor or live-device qualification is claimed. Independent review and
-master integration are pending.
+no new vendor or live-device qualification is claimed. This cohort is archived
+under `build/feedback-reset-pulses-20261127/pre-review/`.
+
+The independent review found one Critical and four Important issues, with no new
+Minors. One test-first repair pass fixes pending-read preservation through reset
+waves, unrelated fill retention, representable scan end states, selected-bit
+dependencies and public exact replay. Final post-review qualification passes all
+35 commands: 227 Python suites reporting 3532 tests, 21 leak-enabled checks,
+24 C++ quality checks, the complete matrix, corpus/editor and source packaging.
+The final checker binds 4126 inputs and 44 executables; five optional reference
+tests are skipped and 44 inherited Minors remain deferred. No second review was
+used. Master integration is pending.

@@ -976,6 +976,68 @@ Module Top {ScanInPort si; ResetPort global; DataInPort enable;
   const auto loop = pattern::Elaborate(cyclic, "Top");
   Require(pattern::DataRegisterPlan(loop).feedback_reset_targets.empty(),
           "scan reset cycles retain the existing guarded behavior");
+  for (const std::string path : {"alias", "forward", "mux", "unused-consumer",
+                                 "mux-control", "alias-shared"}) {
+    std::string source = R"(Module Sink {ScanInPort si; ResetPort rst;
+ ScanRegister r {ScanInSource si; ResetValue 0;}
+ ScanOutPort so {Source r;} DataOutPort q {Source r;}}
+Module Top {ScanInPort si; ResetPort global; DataInPort enable;
+ DataRegister v[1:0] {WriteDataSource 1'b0,v[1]; WriteEnSource enable;}
+ DataRegister w {WriteDataSource w; WriteEnSource 1'b0;}
+ LogicSignal pulse {v[0]^v[1];}
+ DataMux gate SelectedBy pulse {1'b0:global; 1'b1:1'b1;}
+ Instance a Of Sink {InputPort si=si; InputPort rst=gate;}
+ ScanOutPort so {Source a.so;}})";
+    std::string definitions = "Alias packed[2:0] = v,w; ";
+    std::string expression = "packed[2]^packed[1]";
+    if (path == "alias-shared") {
+      expression = "packed[2]^packed[0]";
+    } else if (path == "forward") {
+      source =
+          "Module Forward {DataInPort packed[2:0]; DataOutPort out[2:0] "
+          "{Source packed;}}\n" +
+          source;
+      definitions += "Instance f Of Forward {InputPort packed=packed;} ";
+      expression = "f.out[2]^f.out[1]";
+    } else if (path == "mux" || path == "mux-control") {
+      definitions = "DataInPort pick; DataMux packed[2:0] SelectedBy " +
+                    std::string(path == "mux" ? "pick" : "w") +
+                    " {1'b0:v,w; 1'b1:v,w;} ";
+    } else if (path == "unused-consumer") {
+      definitions =
+          "LogicSignal zero {1'b0;} Alias packed[1:0] = a.q,zero; "
+          "DataRegister unused {WriteDataSource packed[0]; "
+          "WriteEnSource 1'b0;} ";
+      expression = "v[0]^v[1]";
+    }
+    source.replace(source.find("v[0]^v[1]"), 9, expression);
+    source.insert(source.find("LogicSignal pulse"), definitions);
+    pattern::Design selected;
+    selected.AddIcl("selected-reset-dependencies.icl", source);
+    const auto graph = pattern::Elaborate(selected, "Top");
+    pattern::NetworkState state(graph);
+    const auto& plan = state.DataRegisters();
+    if (path == "mux-control" || path == "alias-shared") {
+      Require(plan.feedback_reset_targets.empty(),
+              "selected data bits retain shared owners and real selectors");
+      continue;
+    }
+    Require(plan.feedback_reset_targets ==
+                std::set<size_t>{graph.node_ids.at("a.r")},
+            "unused alias, forwarded and mux data bits create no reset owner "
+            "or writable consumer");
+    state.Drive(graph.node_ids.at("global"), "0");
+    state.Assume(graph.node_ids.at("enable"), "0");
+    state.Assume(graph.node_ids.at("v"), "11");
+    state.Assume(graph.node_ids.at("w"), "0");
+    state.Assume(graph.node_ids.at("a.r"), "1");
+    if (graph.node_ids.count("pick")) {
+      state.Assume(graph.node_ids.at("pick"), "0");
+    }
+    state.ApplyInputs({{graph.node_ids.at("enable"), "1"}});
+    Require(state.Value(graph.node_ids.at("a.r")) == "0",
+            "selected-bit reset dependencies preserve the actual pulse");
+  }
 }
 
 void TestPinSnapshot() {

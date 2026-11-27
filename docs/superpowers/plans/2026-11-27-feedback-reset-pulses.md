@@ -91,14 +91,14 @@ and docs/remaining-work.md. Reuse the existing Makefile feedback module wiring.
   changed-C++ quality, corpus/editor and packaging. Reuse a broader pass for a
   focused claim only when that case ran under the required conditions.
   Expected: all required commands exit0 with exact source/product bindings.
-- [ ] Update guide/tracker and read the complete finalized selected raw diff;
+- [x] Update guide/tracker and read the complete finalized selected raw diff;
   commit grouped messages and run task-done with
   python3 tests/.task198-check.py.
   Expected: final behavioral, source/product and actual performance evidence agree.
 
 ## Branch completion
 
-- [ ] One fresh independent whole-branch review; regrade findings/declined areas,
+- [x] One fresh independent whole-branch review; regrade findings/declined areas,
   one Critical/Important test-first repair pass if needed; defer Minors.
 - [ ] Merge into parent master, verify the merged result, push, detach the reused
   worktree, safely delete only this owned branch and archive only this workspace.

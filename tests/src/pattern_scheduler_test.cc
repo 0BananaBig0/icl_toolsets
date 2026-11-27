@@ -6209,6 +6209,95 @@ void TestDataFeedbackScheduling() {
 void TestFeedbackResetScheduling() {
   {
     pattern::Design design;
+    const std::string source = R"(
+Module Sink {ScanInPort si; ResetPort rst;
+ ScanRegister r {ScanInSource si; ResetValue 0;}
+ ScanOutPort so {Source r;} DataOutPort q {Source r;}}
+Module Top {ScanInPort si; ResetPort global; DataInPort enable;
+ DataRegister v[1:0] {WriteDataSource 1'b0,v[1]; WriteEnSource enable;}
+ LogicSignal pulse {v[0]^v[1];}
+ DataMux gate SelectedBy pulse {1'b0:global; 1'b1:1'b1;}
+ Instance a Of Sink {InputPort si=si; InputPort rst=gate;}
+ ScanOutPort so {Source a.so;} DataOutPort q {Source a.q;}}
+)";
+    design.AddIcl("feedback-exact-primary.icl", source);
+    const auto netlist = pattern::Elaborate(design, "Top");
+    pattern::ScanScheduler planner(netlist), actual(netlist);
+    for (auto* scheduler : {&planner, &actual}) {
+      scheduler->Reset();
+      scheduler->Assume("enable", "0");
+      scheduler->Assume("v", "11");
+      scheduler->Assume("a.r", "1");
+    }
+    const std::vector<pattern::Operation> writes{
+        {"iWrite", {"enable", "1"}, "exact pulse", {}}};
+    const auto steps = planner.Apply(writes);
+    Require(steps.size() == 1 && steps.front().loads.empty(),
+            "qualified reset sinks produce a primary frame");
+    auto malformed = steps;
+    malformed.front().loads["a.r"] = "0";
+    bool rejected = false;
+    try {
+      actual.ReplayPrimary(writes, malformed);
+    } catch (const std::runtime_error&) {
+      rejected = true;
+    }
+    Require(rejected && actual.Value("a.r") == "1" && actual.Value("v") == "11",
+            "exact qualified replay still rejects scan loads atomically");
+    actual.ReplayPrimary(writes, steps);
+    Require(actual.Value("a.r") == "0" && actual.Value("v") == "00",
+            "exact primary replay carries qualified reset pulses");
+    const std::vector<pattern::Operation> reads{
+        {"iRead", {"q", "1"}, "exact actual", {}}};
+    const auto observed = planner.Apply(reads, false, {}, true, false,
+                                        [](const auto&, const auto&) {});
+    size_t observations = 0;
+    actual.ReplayPrimary(reads, observed, {},
+                         [&](const auto&, const auto& values) {
+                           ++observations;
+                           Require(values == "0",
+                                   "exact replay reports actual "
+                                   "reset data independently "
+                                   "of expected comparisons");
+                         });
+    Require(observations == 1, "exact qualified replay publishes once");
+    actual.Apply({{"iWrite", {"a.r", "0bx"}, "exact fill", {}}});
+    Require(actual.Value("a.r") == "0",
+            "exact reset replay retains controlling fill");
+    auto end_source = source;
+    end_source.insert(end_source.find("ScanOutPort so"),
+                      "Alias idle = r {iApplyEndState 1'b0;} ");
+    pattern::Design end_design;
+    end_design.AddIcl("exact-scan-end-state.icl", end_source);
+    const auto end_netlist = pattern::Elaborate(end_design, "Top");
+    for (const std::string value : {"1", "x"}) {
+      pattern::ScanScheduler replay(end_netlist);
+      replay.Reset();
+      replay.Assume("enable", "0");
+      replay.Assume("v", "11");
+      replay.Assume("a.r", value);
+      pattern::ScanStep read, drive;
+      read.expected["q"] = value;
+      read.primary_reads.push_back({{end_netlist.node_ids.at("q"), 0}, 0});
+      drive.writes["enable"] = "1";
+      size_t calls = 0;
+      rejected = false;
+      try {
+        replay.ReplayPrimary(
+            {{"iRead", {"q", "0b" + value}, "unrepresented", {}},
+             {"iWrite", {"enable", "1"}, "unrepresented", {}}},
+            {read, drive}, {}, [&](const auto&, const auto&) { ++calls; });
+      } catch (const std::runtime_error&) {
+        rejected = true;
+      }
+      Require(rejected && calls == 0 && replay.Value("a.r") == value &&
+                  replay.Value("v") == "11",
+              "exact replay rejects unrepresented intermediate scan end "
+              "states without publishing or committing");
+    }
+  }
+  {
+    pattern::Design design;
     design.AddIcl("scan-prepared-read.icl", R"(
 Module Sink {ScanInPort si; ResetPort rst;
  ScanRegister r {ScanInSource si; ResetValue 0;}

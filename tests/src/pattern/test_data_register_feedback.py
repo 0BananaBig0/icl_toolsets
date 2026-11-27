@@ -14,6 +14,18 @@ BASE = """Module Chains {
 }
 """
 
+RESET_SOURCE = """Module Sink {ScanInPort si; ResetPort rst;
+ ScanRegister r {ScanInSource si; ResetValue 0;}
+ ScanOutPort so {Source r;} DataOutPort q {Source r;}}
+Module Chains {ScanInPort si; ResetPort global; DataInPort enable;
+ DataRegister v[1:0] {WriteDataSource 1'b0,v[1]; WriteEnSource enable;}
+ DataRegister w {WriteDataSource w; WriteEnSource 1'b0;}
+ LogicSignal pulse {v[0]^v[1];}
+ DataMux gate SelectedBy pulse {1'b0:global; 1'b1:1'b1;}
+ Instance a Of Sink {InputPort si=si; InputPort rst=gate;}
+ ScanOutPort so {Source a.so;} DataOutPort q {Source a.q;}}
+"""
+
 
 def reset_network(groups, width, depth, masked=False):
     """Independent feedback shifts and reset cascades; all sink reset values are zero."""
@@ -310,6 +322,63 @@ Module Chains {ScanInPort si; ResetPort global;
         commands = commands.replace("iReset;", "iReset; iState observe 0;", 1)
         output = self.replay(source, commands)
         self.assertIn(b"iWrite observe 0b1", output)
+
+    def test_feedback_scan_preparation_preserves_pending_read(self):
+        source = RESET_SOURCE.replace(
+            "DataRegister v", "ScanRegister bus {ScanInSource si;} DataRegister v")
+        source = source.replace("WriteEnSource enable;", "WriteEnSource bus;")
+        source = source.replace("InputPort si=si;", "InputPort si=bus;")
+        source = source.replace("DataOutPort q {Source a.q;}",
+                                "DataOutPort q {Source a.q; Enable bus;}")
+        self.reject(source, "iReset; iState a.r 1; iState enable 0; iState v 3; "
+                    "iState bus 0; iRead q 1; iApply;\n")
+
+    def test_masked_primary_candidate_preserves_unrelated_fill(self):
+        for write_source in ("2'b0", "1'b0,w[1]"):
+            with self.subTest(write_source=write_source):
+                source = RESET_SOURCE.replace(
+                    "DataRegister w {WriteDataSource w; WriteEnSource 1'b0;}",
+                    "DataRegister w[1:0] {WriteDataSource " + write_source + ";}")
+                source = source.replace("v[0]^v[1]", "1'b0 & (v[0]^v[1])")
+                self.reject(source, "iReset; iState a.r 1; iState enable 0; "
+                            "iState v 3; iState w 3; iWrite enable 1; iApply;\n")
+
+    def test_feedback_scan_end_state_replay_is_fixed(self):
+        source = RESET_SOURCE.replace(
+            "ResetValue 0;}", "ResetValue 0;} Alias idle = r {iApplyEndState 1'b0;}", 1)
+        for value in ("1", "0bx"):
+            with self.subTest(value=value):
+                self.reject(source, "iReset; iState a.r " + value +
+                            "; iState enable 0; iState v 3; iRead q " + value +
+                            "; iWrite enable 1; iApply;\n")
+        self.replay(source, "iReset; iState a.r 0; iState enable 0; iState v 3; "
+                    "iRead q 0; iWrite enable 1; iApply;\n")
+
+    def test_feedback_reset_ignores_unused_alias_bits(self):
+        for path in ("alias", "forward", "mux", "unused-consumer"):
+            with self.subTest(path=path):
+                source = RESET_SOURCE
+                expression = "packed[2]^packed[1]"
+                definitions = "Alias packed[2:0] = v,w; "
+                prefix = ""
+                if path == "forward":
+                    source = ("Module Forward {DataInPort packed[2:0]; "
+                              "DataOutPort out[2:0] {Source packed;}}\n" + source)
+                    definitions += "Instance f Of Forward {InputPort packed=packed;} "
+                    expression = "f.out[2]^f.out[1]"
+                elif path == "mux":
+                    definitions = ("DataInPort pick; DataMux packed[2:0] SelectedBy pick "
+                                   "{1'b0:v,w; 1'b1:v,w;} ")
+                    prefix = "iState pick 0; "
+                elif path == "unused-consumer":
+                    definitions = ("LogicSignal zero {1'b0;} Alias packed[1:0] = a.q,zero; "
+                                   "DataRegister unused {WriteDataSource packed[0]; WriteEnSource 1'b0;} ")
+                    expression = "v[0]^v[1]"
+                source = source.replace("LogicSignal pulse {v[0]^v[1];}",
+                                        definitions + "LogicSignal pulse {" + expression + ";}")
+                self.replay(source, "iReset; " + prefix + "iState v 3; iState w 0; "
+                            "iState a.r 1; iState enable 0; iWrite enable 1; "
+                            "iApply; iRead q 0; iApply;\n")
 
     def test_feedback_reset_source_order_and_scale(self):
         for count, width, depth in ((1, 2, 4), (16, 8, 1), (128, 8, 4)):

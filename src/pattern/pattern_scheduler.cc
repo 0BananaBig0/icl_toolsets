@@ -3136,12 +3136,20 @@ class ScanScheduler::Impl {
     }
     return steps;
   }
+  bool HasOnlyFeedbackResetSinks() const {
+    const auto& targets = state_.DataRegisters().feedback_reset_targets;
+    return !targets.empty() &&
+           std::all_of(registers_.begin(), registers_.end(),
+                       [&](size_t id) { return targets.count(id); });
+  }
   void ReplayPrimary(const std::vector<Operation>& operations,
                      const std::vector<ScanStep>& steps,
                      const std::map<size_t, std::string>& preserved,
                      const PioObservation& observe,
                      const std::map<size_t, std::string>& caller_goals) {
-    if (!roots_.empty() || !registers_.empty() || tap_ || opaque_model_) {
+    if (((!roots_.empty() || !registers_.empty()) &&
+         !HasOnlyFeedbackResetSinks()) ||
+        tap_ || opaque_model_) {
       throw std::runtime_error(
           "exact primary replay requires a primary-only network");
     }
@@ -3160,6 +3168,12 @@ class ScanScheduler::Impl {
     const auto end_goals = EndGoals(operations);
     const auto desired =
         DesiredPreserved(preserved, end_goals, true, operations);
+    std::map<size_t, std::string> scan_end_states;
+    for (const auto& [id, bits] : end_states_) {
+      if (netlist_.nodes[id].kind == "ScanRegister") {
+        scan_end_states.emplace(id, bits);
+      }
+    }
     auto held = preserved;
     NetworkState replay(state_);
     auto fill = fill_;
@@ -3192,6 +3206,7 @@ class ScanScheduler::Impl {
       replay.TakeControlEvents();
       if (!driven.empty()) replay.ApplyInputs(driven, check);
       check(replay);
+      CheckPreservedValues(scan_end_states, &replay);
       for (const auto& [id, bits] : driven) fill.at(id) = bits;
       for (const auto& [id, value] : replay.TakeControlEvents()) {
         fill.at(id) = value ? *value : ResetFill(id);
@@ -4410,6 +4425,7 @@ class ScanScheduler::Impl {
       const std::map<size_t, std::string>& preserved, bool explicit_writes,
       const PioObservation& observe = {}) {
     const auto& data_plan = state_.DataRegisters();
+    const bool independent_resets = HasOnlyFeedbackResetSinks();
     std::map<size_t, std::string> goals;
     std::map<size_t, std::map<int64_t, char>> reads;
     std::unique_ptr<AddressResolver> controls;
@@ -4662,9 +4678,21 @@ class ScanScheduler::Impl {
             const auto write_check = [&](const FeedbackWrite& write) {
               const auto& node = netlist_.nodes[write.id];
               if (!explicit_pins) {
-                data_deviations.push_back(z3::ite(
-                    write.enabled, write.load.bits ^ write.old_fill.bits,
-                    context_.bv_val(0, node.Width())));
+                if (independent_resets && !goals.count(write.id)) {
+                  const auto care = SymbolicValue::Literal(
+                      context_, data_control_masks_.count(write.id)
+                                    ? data_control_masks_.at(write.id)
+                                    : std::string(node.Width(), '0'));
+                  solver.add(z3::implies(
+                      write.enabled,
+                      (write.load.bits & write.load.known & ~care.bits) ==
+                          (write.old_fill.bits & write.load.known &
+                           ~care.bits)));
+                } else {
+                  data_deviations.push_back(z3::ite(
+                      write.enabled, write.load.bits ^ write.old_fill.bits,
+                      context_.bv_val(0, node.Width())));
+                }
               }
               auto active =
                   frame.activation
@@ -4742,9 +4770,19 @@ class ScanScheduler::Impl {
               std::any_of(inputs->second.begin(), inputs->second.end(),
                           [&](size_t pin) { return goals.count(pin); });
           if (!explicit_pins) {
-            data_deviations.push_back(
-                z3::ite(enabled, load.bits ^ fills.at(id).bits,
-                        context_.bv_val(0, node.Width())));
+            if (independent_resets && !goals.count(id)) {
+              const auto care = SymbolicValue::Literal(
+                  context_, data_control_masks_.count(id)
+                                ? data_control_masks_.at(id)
+                                : std::string(node.Width(), '0'));
+              solver.add(
+                  z3::implies(enabled, (load.bits & ~care.bits) ==
+                                           (fills.at(id).bits & ~care.bits)));
+            } else {
+              data_deviations.push_back(
+                  z3::ite(enabled, load.bits ^ fills.at(id).bits,
+                          context_.bv_val(0, node.Width())));
+            }
           }
           auto fill = Choose(enabled, load, fills.at(id));
           if (node.reset) {
@@ -4848,6 +4886,13 @@ class ScanScheduler::Impl {
           emitted = emitted || choice.selected;
         }
         ConstrainPrimaryEndStates(solver, *values, emitted, any_drive);
+        for (const auto& [id, defaults] : end_states_) {
+          if (netlist_.nodes[id].kind != "ScanRegister") continue;
+          // A primary frame cannot serialize a temporary scan override.
+          solver.add(z3::implies(
+              emitted, Matches(values->Value(id),
+                               SymbolicValue::Literal(context_, defaults))));
+        }
         frame.state = next;
         frame.fill = fills;
         frames.push_back(std::move(frame));
@@ -6249,9 +6294,7 @@ class ScanScheduler::Impl {
       if (node.kind != "ScanRegister") continue;
       const auto value = serialized.Value(id);
       const auto fallback = SymbolicValue::Literal(context_, defaults);
-      const auto overridden =
-          ((value.bits ^ fallback.bits) & value.known & fallback.known) !=
-          context_.bv_val(0, node.Width());
+      const auto overridden = !Matches(value, fallback);
       auto represented = frame.active.count(id) ? frame.active.at(id)
                                                 : context_.bool_val(false);
       represented = represented && Matches(value, frame.loads.at(id));
@@ -6849,11 +6892,7 @@ class ScanScheduler::Impl {
     if (operations.empty() && !NeedsEndState(end_goals)) return {};
     const auto& data_plan = state_.DataRegisters();
     const bool primary_resets =
-        !data_plan.feedback_reset_targets.empty() &&
-        std::all_of(registers_.begin(), registers_.end(),
-                    [&](size_t id) {
-                      return data_plan.feedback_reset_targets.count(id);
-                    }) &&
+        HasOnlyFeedbackResetSinks() &&
         std::all_of(
             operations.begin(), operations.end(), [&](const auto& operation) {
               if ((operation.command != "iWrite" &&
@@ -7843,6 +7882,17 @@ class ScanScheduler::Impl {
             const auto state_check = [&](SymbolicNetwork& current) {
               ConstrainPreserved(solver, current, preserved, desired_preserved,
                                  reserved_changed);
+              for (size_t target : data_group.reset_targets) {
+                const auto waiting = pending_reads.find(target);
+                if (waiting == pending_reads.end()) continue;
+                const auto value = current.Value(target);
+                for (size_t read : waiting->second) {
+                  solver.add(
+                      z3::implies(!data_read_done.at(read),
+                                  value.bits == state.at(target).bits &&
+                                      value.known == state.at(target).known));
+                }
+              }
             };
             const auto settled = SettleDataFeedback(
                 data_group, &data, data_event, event, fills, &solver,
