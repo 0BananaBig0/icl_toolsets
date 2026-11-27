@@ -559,6 +559,56 @@ iRead observed 9; iApply
         self.assertIn('does not support iClock histories', run.stdout + run.stderr)
         self.assertEqual(target.read_text(), 'previous artifact\n')
 
+    def test_local_reset_inserts_release_before_clock_proc(self):
+        source = (helpers.ROOT / 'tests/cases/ours/pattern_generation/data_reset_dependencies.icl').read_text()
+        source = TREE.split('Module Top {', 1)[0] + source.replace(
+            'Module DataResetNetwork {', '''Module Top {
+ ClockPort root;
+ Instance pll Of Pll {InputPort ck=root;}
+ ToClockPort slow {Source pll.osc; FreqDivider 2;}
+ ToClockPort fast {Source pll.osc; FreqMultiplier 3;}
+''')
+        definition = 'iProc setup {} {iWrite c.value 9; iApply; iClock slow}'
+        output = self.replay(source, 'iReset\n' + definition + '''
+iCall setup
+iClockOverride pll.osc -period 20ns
+iClock fast; iRunLoop 5 -sck slow; iRunLoop 7 -sck fast
+iRead c.value 9; iApply
+''')
+        rewritten = (self.root / 'reset.pdl').read_text()
+        self.assertIn(definition, rewritten)
+        self.assertIn('iWrite release 0b1\niApply\n', rewritten)
+        self.assertLess(rewritten.index('iWrite release 0b1'), rewritten.index('iCall setup'))
+        self.assertEqual([line for line in output.splitlines()
+                          if line.startswith(('iClock ', 'iClockOverride ', 'iRunLoop '))], [
+            'iClock slow', 'iClockOverride pll.osc -period 20 ns', 'iClock fast',
+            'iRunLoop 5 -sck slow', 'iRunLoop 7 -sck fast'])
+
+    def test_encoded_flat_mixed_clock_components(self):
+        source = '''Module Cell {
+ ClockPort ref[9:8]; DataInPort mode;
+ ClockMux choose SelectedBy mode {1'b0:ref[8];1'b1:ref[8];}
+ ToClockPort out[5:4] {Source ref[9], choose; FreqMultiplier 3; FreqDivider 2;}
+}
+Module Top {ClockPort root[2:1]; DataInPort mode;
+ Instance c Of Cell {InputPort ref=root; InputPort mode=mode;}}
+'''
+        original = '''iState mode 0
+iClockOverride c.out(5) -period 7 ps; iClock c.out(5)
+iClockOverride c.out(4) -freqDivider 5; iClock c.out(4); iRunLoop 6 -sck c.out(4)
+iClockOverride c.out(5) -source c.ref(9) -freqMultiplier 2 -freqDivider 1
+iRunLoop 9 -sck c.out(5); iClock c.out(5); iRunLoop 3 -sck c.out(5)
+'''
+        encoded = original.replace('c.out', 'n' + b'c.out'.hex()).replace(
+            'c.ref', 'n' + b'c.ref'.hex())
+        output = helpers.SystemClocks.physical_clock_replay(self, source, original, encoded)
+        self.assertEqual([line for line in output.splitlines()
+                          if line.startswith(('iClock ', 'iClockOverride ', 'iRunLoop '))], [
+            'iClockOverride c.out(5) -period 7 ps', 'iClock c.out(5)',
+            'iClock root(1)', 'iRunLoop 10 -sck root(1)',
+            'iClockOverride c.out(5) -source c.ref(9) -freqMultiplier 2 -freqDivider 1',
+            'iRunLoop 9 -sck c.out(5)', 'iClock c.out(5)', 'iRunLoop 3 -sck c.out(5)'])
+
     def test_pending_physical_and_unsafe_boundaries(self):
         source = TREE.replace('ClockPort root;', 'ClockPort root; DataInPort data;')
         self.rejected(source, 'iClockOverride pll.osc -period 20ns; iClock slow; '

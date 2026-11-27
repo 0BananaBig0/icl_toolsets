@@ -216,6 +216,7 @@ Module Chains {{
                     start = time.monotonic()
                     output = self.replay(source, body + 'iApply; ' + reads + 'iApply;\n')
                     elapsed = time.monotonic() - start
+                    self.assertEqual(output.splitlines().count(b'iApply'), 2)
                     first_group = output.split(b'iApply\n', 1)[0].splitlines()
                     actual = [tuple(line.split()[1:]) for line in first_group
                               if line.startswith(b'iWrite ')]

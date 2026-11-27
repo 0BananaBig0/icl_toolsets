@@ -2426,3 +2426,38 @@ All 117 stashes are preserved. The owned branch is retired; its qualified source
 archive, fault controls, review, ledger and helper copies remain under
 `build/regression-oracles-20261128/`. The reusable detached worktree and sibling
 ledgers remain available. Broader inventory and excluded coverage item1 remain open.
+
+
+## Task204 replay boundary regressions
+
+Four existing-contract regressions now protect replay boundaries: two standalone
+fanout apply events, a cared inverted opaque comparison with unknown actual data,
+a real local-reset release before a clock-containing procedure, and encoded
+associated-flat vector bits with both lowered and retained clock programs.
+The reset procedure checks its clock after its data apply and before the first
+period override; the existing exact five-form helper covers the focused case.
+Clock version/statement sequences, procedure bytes, release position, physical
+comparison mask, unknown history and un-clearable unknown status are explicit.
+
+Protected current generators first pass all three new fixture families. The old
+fanout oracle accepts nine complete first-event omissions, while the strengthened
+one rejects all nine. The other old fixtures do not exercise cared inversion,
+actual reset insertion or lowered encoded names. New controls reject one wrong
+polarity, removed prerequisite and lost lowered-clock result each. Actual correct
+replay remains green. These are test-effectiveness controls, not production bugs.
+
+All 12 qualification checks pass: six complete normal/static CLI suites report
+112 tests, and two default leak-enabled CLI runs report 14 methods
+(two new clock cases and all twelve small opaque cases). Each generator's nine
+fanout coordinates retains the existing 10-second bound for four forms. Fault
+artifacts, source-package build/install, whitespace and identity checks pass.
+All 44 executables, including every generator, and 4130 of 4133 input files retain
+their Task203 identities; only the three Python tests differ. No producer,
+hardware eligibility, dependency, limit, vendor or performance claim changes.
+The unrelated full regression/native sanitizer/vendor matrices are not rerun.
+
+Four inherited findings are addressed; the candidate remainder is 35 minus 4 = 31.
+Independent review and integration remain pending. Exact drivers, inputs, outputs,
+protected fixture receipts and fault controls are retained under
+`build/replay-boundaries-20261128/`. Broader inventory and excluded coverage item1
+remain open.
