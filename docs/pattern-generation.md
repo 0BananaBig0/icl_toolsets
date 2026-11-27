@@ -11634,15 +11634,15 @@ metadata stay independent. Programs without an explicit period operation keep
 the existing root-relative lowering; a restored intrinsic oscillator becomes
 the original root again.
 
-This is the native interpretation of IEEE1687-2014 sections6.4.6.20 and7.9.15–16
-(printed103–104,174–175/PDF117–118,188–189). Explicit `-period` output uses the
+This is the native interpretation of IEEE 1687-2014 sections 6.4.6.20 and 7.9.15–16
+(printed 103–104, 174–175 / PDF 117–118, 188–189). Explicit `-period` output uses the
 existing vendor extension. Vendor references explicitly state the declared
 period; raw vendor empty-command omission behavior is not qualified.
 
 The 19 period methods pass on both generator variants, along with 73 ordinary
 clock methods and native snapshot assertions. Three rounds of the nine
 restoration workloads and 18 matched parent/current ordinary controls pass:
-45 points,225 CLI processes and three Python runners. A restoration point has
+45 points, 225 CLI processes and three Python runners. A restoration point has
 8/128/1024 replacement/restoration pairs across 2/8/32 declared oscillator bits,
 plus one initial period override. The maximum point takes 0.530 seconds and
 76,272 KiB runner/child RSS, within 10 seconds/512 MiB. Captured input/output bytes

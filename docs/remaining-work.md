@@ -2085,7 +2085,7 @@ All 22 leak-enabled sanitizer checks and six changed-code C++ checks pass,
 along with corpus, editor checks and source packaging. The final identity
 manifest binds 4,125 inputs and 44 executables. Full regression takes
 1,670.251 seconds; packaging takes 54.778 seconds.
-One fresh independent review found 0 Critical/1 Important/3 Minor. A single
+One fresh independent review found 0 Critical / 1 Important / 3 Minor. A single
 evidence-only repair pass resolves the Important finding: every control input
 and output file is rehashed, all nine parent/current pairs match and all planned
 coordinates occur once. Four rejection controls pass and the authentic bundle
