@@ -4,6 +4,7 @@ import time
 import unittest
 
 import test_data_register_state as state_helpers
+import test_data_reset_releases as reset_helpers
 import test_simultaneous_scan_chains as helpers
 
 BASE = """Module Chains {
@@ -12,6 +13,38 @@ BASE = """Module Chains {
  DataOutPort q[3:0] {Source value;}
 }
 """
+
+
+def reset_network(groups, width, depth, masked=False):
+    """Independent feedback shifts and reset cascades; all sink reset values are zero."""
+    source = """Module Sink {ScanInPort si; ResetPort rst;
+ ScanRegister r {ScanInSource si; ResetValue 0;}
+ ScanOutPort so {Source r;} DataOutPort q {Source r;}}
+Module Chains {ScanInPort si; ResetPort global;
+"""
+    source += f"DataInPort enable[{groups-1}:0]; DataInPort mask[{groups-1}:0];\n"
+    commands = "iReset; iState enable 0; iTake mask; iState mask 0b" + ("0" if masked else "1")*groups + "; "
+    serial = "si"
+    sinks = []
+    for group in range(groups):
+        source += (f"DataRegister v{group}[{width-1}:0] {{WriteDataSource 1'b0,v{group}[{width-1}:1]; "
+                   f"WriteEnSource enable[{group}];}}\n"
+                   f"LogicSignal pulse{group} {{mask[{group}] & (v{group}[0]^v{group}[{width-1}]);}}\n")
+        commands += f"iState v{group} {(1<<width)-1}; "
+        previous = None
+        for level in range(depth):
+            name = f"s{group}_{level}"
+            selected = f"pulse{group}" if previous is None else f"~{previous}.q"
+            source += (f"LogicSignal select_{name} {{{selected};}}\n"
+                       f"DataMux gate_{name} SelectedBy select_{name} {{1'b0:global; 1'b1:1'b1;}}\n"
+                       f"Instance {name} Of Sink {{InputPort si={serial}; InputPort rst=gate_{name};}}\n")
+            commands += f"iState {name}.r 1; "
+            sinks.append(f"{name}.q")
+            serial, previous = f"{name}.so", name
+    source += f"ScanOutPort so {{Source {serial};}} DataOutPort q[{groups*depth-1}:0] {{Source " + ",".join(sinks) + ";}}\n"
+    commands += "iWrite mask 0b" + ("0" if masked else "1")*groups + "; "
+    commands += "iWrite enable 0b" + "1"*groups + "; iApply; iRead q 0b" + ("1" if masked else "0")*(groups*depth) + "; iApply;\n"
+    return source, commands
 
 
 class Feedback(unittest.TestCase):
@@ -91,7 +124,7 @@ class Feedback(unittest.TestCase):
             self.replay(source, prefix + f"iRelease value[0]; iWrite {target} 1; "
                         "iApply; iRead q 0; iApply;\n")
 
-    def test_transient_external_reset_requires_supported_events(self):
+    def test_transient_external_reset_retains_pulse(self):
         source = """Module Victim {
  ScanInPort si; ResetPort rst;
  ScanRegister value {ScanInSource si; ResetValue 0;}
@@ -108,9 +141,63 @@ Module Chains {
  DataOutPort q[1:0] {Source value;}
 }"""
         prefix = "iReset; iState enable 0; iState value 3; iState victim.value 1; "
-        self.reject(source, prefix + "iTake mask; iState mask 1; iWrite enable 1; iApply;\n")
+        self.replay(source, prefix + "iTake mask; iState mask 1; iWrite enable 1; "
+                    "iApply; iRead q 0; iApply; iRead victim.value 0; iApply;\n")
+        self.replay(source, prefix + "iTake mask; iState mask 1; iWrite value 0; "
+                    "iApply; iRead q 0; iApply; iRead victim.value 0; iApply;\n")
+        reset_helpers.DataResetReleases.rewrite(
+            self, source, prefix + "iTake mask; iState mask 1; iTake victim.value; "
+            "iState victim.value 1; iWrite enable 1; iApply;\n", ok=False)
         self.replay(source, prefix + "iTake mask; iState mask 0; iWrite enable 1; "
                     "iApply; iRead q 0; iApply; iRead victim.value 1; iApply;\n")
+
+    def test_cascaded_feedback_resets_and_fill(self):
+        source = """Module Sink {
+ ScanInPort si; ResetPort rst {ActivePolarity 0;}
+ ScanRegister r[2:3] {ScanInSource si; ResetValue 0;}
+ ScanOutPort so {Source r[3];} DataOutPort q[2:3] {Source r;}
+}
+Module Chains {ScanInPort si; ResetPort global; DataInPort enable;
+ ScanRegister bus {ScanInSource si; CaptureSource bus;}
+ DataRegister v[3:2] {WriteDataSource 1'b0,v[3]; WriteEnSource enable;}
+ Alias word[1:0] = v;
+ LogicSignal pulse {word[0] ^ word[1];}
+ DataMux gate SelectedBy pulse {1'b0:global; 1'b1:1'b1;}
+ LogicSignal cascade_pulse {~a.q[2];}
+ DataMux cascade_gate SelectedBy cascade_pulse {1'b0:global; 1'b1:1'b1;}
+ Instance a Of Sink {InputPort si=bus; InputPort rst=~gate;}
+ Instance b Of Sink {InputPort si=a.so; InputPort rst=~cascade_gate;}
+ ScanOutPort so {Source b.so;}
+ DataOutPort q[2:3] {Source b.q;}
+}"""
+        prefix = "iReset; iState enable 0; iState bus 0; iState v 3; iState a.r 3; iState b.r 3; "
+        for mixed in (False, True):
+            current = source.replace("WriteEnSource enable;", "WriteEnSource bus;") if mixed else source
+            commands = prefix + ("iWrite bus 1; " if mixed else "iWrite enable 1; ")
+            commands += ("iApply -together; iRead q 0; iApply; "
+                         "iWrite b.r 0bxx; iApply; iRead q 0; iApply;\n")
+            output = self.replay(current, commands)
+            self.assertEqual(output, self.run_tool(self.root / "debug/Chains.icl",
+                                                  self.root / "result.pdl", "flat-generated/result.pdl"))
+        self.reject(source, prefix + "iTake b.r; iState b.r 3; iWrite enable 1; iApply;\n")
+
+    def test_feedback_reset_context_guards(self):
+        base = """Module Sink {ScanInPort si; ResetPort rst;
+ ScanRegister r {ScanInSource si; ResetValue 0;}
+ ScanOutPort so {Source r;} DataOutPort q {Source r;}}
+Module Chains {ScanInPort si; ResetPort global; DataInPort enable; DataInPort mask;
+ DataRegister v[1:0] {WriteDataSource 1'b0,v[1]; WriteEnSource enable;}
+ LogicSignal pulse {mask & (v[0]^v[1]);}
+ DataMux gate SelectedBy pulse {1'b0:global; 1'b1:1'b1;}
+ Instance a Of Sink {InputPort si=si; InputPort rst=gate;}
+ ScanOutPort so {Source a.so;} EXTRA}
+"""
+        for extra in ("TCKPort clock;", "DataRegister other {WriteDataSource a.q; WriteEnSource enable;}"):
+            source = base.replace("EXTRA", extra)
+            prefix = "iReset; iState v 3; iState a.r 1; iState enable 0; iTake mask; "
+            self.reject(source, prefix + "iState mask 1; iWrite enable 1; iApply;\n")
+            if "TCKPort" not in extra:
+                self.replay(source, prefix + "iState mask 0; iWrite enable 1; iApply;\n")
 
     def test_unknown_convergence_cannot_erase_known_state(self):
         source = BASE.replace("WriteDataSource value", "WriteDataSource 1'bx,value[3:1]")
@@ -172,6 +259,71 @@ Module Chains {
             output = self.replay(source, prefix + request +
                                  "iWrite f 3; iWrite dummy 1; iApply;\n")
             self.assertIn(b"iWrite re 0b1", output)
+
+    def test_feedback_reset_actual_and_reset_only(self):
+        source, commands = reset_network(1, 2, 2)
+        commands = "iPDLLevel 1; " + commands.replace("iRead q 0b00", "iRead q 0b11")
+        commands += "iNote [iGetReadData q -bin]; iNote [iGetMiscompares q -bin];\n"
+        icl, pdl, reset = self.root / "input.icl", self.root / "input.pdl", self.root / "reset.pdl"
+        icl.write_text(source)
+        pdl.write_text(commands)
+        output = self.run_tool(icl, pdl, extra=("--model_readback", "--local_reset", str(reset)))
+        self.assertIn(b"iNote 0b00\n", output)
+        self.assertIn(b"iNote 0b11\n", output)
+        self.assertEqual(output, self.run_tool(self.root / "debug/Chains.icl", pdl,
+                                              "flat-modeled/result.pdl", extra=("--model_readback",)))
+        self.assertEqual(output, self.run_tool(icl, self.root / "result.pdl",
+                                              "generated-modeled/result.pdl", extra=("--model_readback",)))
+        expanded = self.run_tool(icl, reset, "reset-source/result.pdl", extra=("--model_readback",))
+        self.assertEqual(expanded, self.run_tool(self.root / "debug/Chains.icl", reset,
+                                                "reset-flat/result.pdl", extra=("--model_readback",)))
+
+
+    def test_scan_prepared_primary_read_preserves_existing_plan(self):
+        source = """Module Sink {ScanInPort si; ResetPort rst;
+ ScanRegister r {ScanInSource si; ResetValue 0;}
+ ScanOutPort so {Source r;} DataOutPort q {Source r;}}
+Module Chains {ScanInPort si; ResetPort global;
+ DataRegister v[1:0] {WriteDataSource v;}
+ LogicSignal pulse {v[0]^v[1];}
+ DataMux gate SelectedBy pulse {1'b0:global; 1'b1:1'b1;}
+ Instance a Of Sink {InputPort si=si; InputPort rst=gate;}
+ ScanOutPort so {Source a.so;}
+ DataOutPort q {Source v[0]; Enable a.q;}}
+"""
+        body = "iReset; iState v 3; iState a.r 0; iRead q 1; iApply;\n"
+        output = self.replay(source, body)
+        self.assertIn(b"iWrite a.r 0b1", output)
+        (self.root / "source.pdl").write_text(
+            "iPDLLevel 1; " + body.replace("iRead q 1", "iRead q 0") +
+            "iNote [iGetReadData q -bin]; iNote [iGetMiscompares q -bin];\n")
+        observed = self.run_tool(self.root / "source.icl", self.root / "source.pdl",
+                                 "modeled/result.pdl", extra=("--model_readback",))
+        self.assertEqual(observed.count(b"iNote 0b1\n"), 2)
+
+    def test_feedback_read_only_preparation_falls_back(self):
+        source, commands = reset_network(1, 2, 1)
+        source = source.replace("DataInPort enable[0:0];",
+                                "DataInPort observe; DataInPort enable[0:0];")
+        source = source.replace("DataOutPort q[0:0] {Source s0_0.q;}",
+                                "DataOutPort q[0:0] {Source s0_0.q; Enable observe;}")
+        commands = commands.replace("iReset;", "iReset; iState observe 0;", 1)
+        output = self.replay(source, commands)
+        self.assertIn(b"iWrite observe 0b1", output)
+
+    def test_feedback_reset_source_order_and_scale(self):
+        for count, width, depth in ((1, 2, 4), (16, 8, 1), (128, 8, 4)):
+            for masked in (False, True):
+                source, commands = reset_network(count, width, depth, masked)
+                self.replay(source, commands)
+                if count == 1:
+                    start = source.index("DataRegister v0")
+                    end = source.index("ScanOutPort so {Source s")
+                    reversed_source = (source[:start] +
+                                       "\n".join(reversed(source[start:end].splitlines())) +
+                                       "\n" + source[end:])
+                    self.replay(reversed_source, commands)
+
 
     def test_feedback_and_matched_dag_scale(self):
         for count in (16, 128):

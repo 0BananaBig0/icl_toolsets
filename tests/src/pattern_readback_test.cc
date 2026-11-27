@@ -763,6 +763,40 @@ Module Top {
   Require(readback(operations, false)->failures == 0,
           "callback endpoint status remains cleared");
 }
+void TestFeedbackResetActualReadback() {
+  pattern::Design design;
+  design.AddIcl("feedback-reset-readback.icl", R"(Module Sink {
+ ScanInPort si; ResetPort rst;
+ ScanRegister r {ScanInSource si; ResetValue 0;}
+ ScanOutPort so {Source r;} DataOutPort q {Source r;}
+}
+Module Top {ScanInPort si; ResetPort global; DataInPort enable;
+ DataRegister v[1:0] {WriteDataSource 1'b0,v[1]; WriteEnSource enable;}
+ LogicSignal pulse {v[0]^v[1];}
+ DataMux gate SelectedBy pulse {1'b0:global; 1'b1:1'b1;}
+ Instance a Of Sink {InputPort si=si; InputPort rst=gate;}
+ ScanOutPort so {Source a.so;} DataOutPort q {Source a.q;}
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  auto readback = pattern::MakeModeledReadback(netlist);
+  std::vector<pattern::Operation> operations{
+      {"iReset", {}, "test", {}},
+      {"iState", {"enable", "0"}, "test", {}},
+      {"iState", {"v", "3"}, "test", {}},
+      {"iState", {"a.r", "1"}, "test", {}},
+      {"iWrite", {"enable", "1"}, "test", {}},
+      {"iApply", {}, "test", {}},
+      {"iRead", {"q", "1"}, "test", {}},
+      {"iApply", {}, "test", {}}};
+  const auto* result = readback(operations, false);
+  Require(
+      result->failures == 1 && result->bits.size() == 1 &&
+          result->bits.front().node == netlist.node_ids.at("q") &&
+          result->bits.front().read == '0' &&
+          result->bits.front().miscompare == '1',
+      "actual pulsed reset remains zero even when the comparison expects one");
+}
+
 void TestAutomaticPrimaryActualReadback() {
   pattern::Design design;
   design.AddIcl("automatic-primary.icl", R"(
@@ -1343,6 +1377,7 @@ int main() {
     TestRawTapObservationCommit();
     TestCallbackResetRetainsActualModelReadback();
     TestAutomaticPrimaryActualReadback();
+    TestFeedbackResetActualReadback();
     TestCallbackHistoryBoundary();
     TestReadModel();
     TestModeledReadback();

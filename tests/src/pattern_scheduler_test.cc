@@ -6206,6 +6206,116 @@ void TestDataFeedbackScheduling() {
   }
 }
 
+void TestFeedbackResetScheduling() {
+  {
+    pattern::Design design;
+    design.AddIcl("scan-prepared-read.icl", R"(
+Module Sink {ScanInPort si; ResetPort rst;
+ ScanRegister r {ScanInSource si; ResetValue 0;}
+ ScanOutPort so {Source r;} DataOutPort q {Source r;}}
+Module Top {ScanInPort si; ResetPort global;
+ DataRegister v[1:0] {WriteDataSource v;}
+ LogicSignal pulse {v[0]^v[1];}
+ DataMux gate SelectedBy pulse {1'b0:global; 1'b1:1'b1;}
+ Instance a Of Sink {InputPort si=si; InputPort rst=gate;}
+ ScanOutPort so {Source a.so;}
+ DataOutPort q {Source v[0]; Enable a.q;}}
+)");
+    const auto netlist = pattern::Elaborate(design, "Top");
+    pattern::ScanScheduler scheduler(netlist);
+    scheduler.Reset();
+    scheduler.Assume("v", "11");
+    scheduler.Assume("a.r", "0");
+    const std::vector<pattern::Operation> reads{
+        {"iRead", {"q", "0"}, "prepared", {}}};
+    size_t calls = 0;
+    bool rejected = false;
+    const auto observe = [&](const auto&, const auto& values) {
+      ++calls;
+      Require(values == "1", "prepared read reports actual data");
+    };
+    try {
+      scheduler.Apply(reads, false, {{netlist.node_ids.at("a.r"), "0"}}, true,
+                      false, observe);
+    } catch (const std::runtime_error&) {
+      rejected = true;
+    }
+    Require(rejected && calls == 0 && scheduler.Value("a.r") == "0",
+            "failed primary and mixed attempts publish no observations");
+    scheduler.Apply(reads, false, {}, true, false, observe);
+    Require(calls == 1 && scheduler.Value("a.r") == "1",
+            "scan-prepared primary read commits and publishes exactly once");
+    scheduler.Assume("a.r", "0");
+    rejected = false;
+    try {
+      scheduler.Apply(reads, false, {}, true, false,
+                      [&](const auto&, const auto&) {
+                        ++calls;
+                        throw std::runtime_error("prepared listener failure");
+                      });
+    } catch (const std::runtime_error& error) {
+      rejected = std::string(error.what()) == "prepared listener failure";
+    }
+    Require(rejected && calls == 2 && scheduler.Value("a.r") == "1",
+            "subscriber failure retains the committed scan preparation");
+  }
+  for (bool mixed : {false, true}) {
+    std::string source = R"(Module Sink {
+ ScanInPort si; ResetPort rst;
+ ScanRegister r {ScanInSource si; ResetValue 0;}
+ ScanOutPort so {Source r;} DataOutPort q {Source r;}
+}
+Module Top {ScanInPort si; ResetPort global; DataInPort enable;
+ ScanRegister bus {ScanInSource si; CaptureSource bus;}
+ DataRegister v[1:0] {WriteDataSource 1'b0,v[1]; WriteEnSource enable;}
+ LogicSignal pulse {v[0] ^ v[1];}
+ DataMux gate SelectedBy pulse {1'b0:global; 1'b1:1'b1;}
+ LogicSignal cascade_pulse {~a.q;}
+ DataMux cascade_gate SelectedBy cascade_pulse {1'b0:global; 1'b1:1'b1;}
+ Instance a Of Sink {InputPort si=bus; InputPort rst=gate;}
+ Instance b Of Sink {InputPort si=a.so; InputPort rst=cascade_gate;}
+ ScanOutPort so {Source b.so;}
+ DataOutPort q {Source b.q;}
+})";
+    if (mixed) {
+      const auto at = source.find("WriteEnSource enable;");
+      source.replace(at, std::string("WriteEnSource enable;").size(),
+                     "WriteEnSource bus;");
+    }
+    for (bool flat : {false, true}) {
+      pattern::Design design;
+      design.AddIcl("feedback-reset-scheduler.icl", source);
+      const auto netlist = pattern::Elaborate(design, "Top");
+      pattern::ScanScheduler scheduler(netlist);
+      scheduler.Reset();
+      scheduler.Assume("enable", "0");
+      scheduler.Assume("bus", "0");
+      scheduler.Assume("v", "11");
+      scheduler.Assume("a.r", "1");
+      scheduler.Assume("b.r", "1");
+      scheduler.Assume("enable", "1");
+      Require(scheduler.Apply({}).empty() && scheduler.Value("v") == "11",
+              "an empty apply performs no feedback event");
+      scheduler.Apply({{"iRead", {"q", "1"}, "read-only", {}}});
+      Require(scheduler.Value("v") == "11" && scheduler.Value("a.r") == "1",
+              "a read-only primary frame performs no feedback reset event");
+      scheduler.Assume("enable", "0");
+      std::vector<pattern::Operation> operations{
+          {"iWrite", {mixed ? "bus" : "enable", "1"}, "pulse", {}}};
+      const auto steps = scheduler.Apply(operations, true);
+      Require(!steps.empty() && scheduler.Value("v") == "00" &&
+                  scheduler.Value("a.r") == "0" &&
+                  scheduler.Value("b.r") == "0",
+              "primary and mixed planners carry pulsed scan reset state");
+      scheduler.Apply({{"iRead", {"q", "0"}, "actual", {}}});
+      scheduler.Apply({{"iWrite", {"b.r", "0bx"}, "fill", {}}});
+      Require(scheduler.Value("b.r") == "0",
+              "pulse ResetValue controls later X fill");
+      if (!flat) source = pattern::SerializeIcl(netlist);
+    }
+  }
+}
+
 void TestDataResetCallbacks() {
   std::ifstream file(
       "tests/cases/ours/pattern_generation/data_reset_callbacks.icl");
@@ -8011,6 +8121,7 @@ int main(int argc, char* argv[]) {
       }
       if (argc == 2 && std::string(argv[1]) == "--reset-backend") {
         TestDataFeedbackScheduling();
+        TestFeedbackResetScheduling();
         TestDataResetCallbacks();
         TestUnreleasedDataFeedback();
         TestGreedyRollback();
@@ -8092,6 +8203,7 @@ int main(int argc, char* argv[]) {
     TestStandaloneIdleClockGates();
     TestStandaloneIdleDataFill();
     TestDataFeedbackScheduling();
+    TestFeedbackResetScheduling();
     TestDataResetCallbacks();
     TestUnreleasedDataFeedback();
     TestDataResetDependencies();
