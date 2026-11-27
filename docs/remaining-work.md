@@ -2771,7 +2771,16 @@ scripts removed. Both optimization preflight checks pass. Apart from the moved
 print, guide bytes and native work are identical to Task211. Qualification checks
 4135 inputs,48 products and2617 canonical files and packages the four changed
 documents. Task211's270 native/16 parser replay and source build/install remain
-retained evidence for unchanged work; they are not rerun here. One inherited
-finding is a candidate closure:26 minus1 =25 pending review/integration. Evidence:
+retained evidence for unchanged work; they are not rerun here. The inherited
+scratch-location finding is resolved;25 findings remain deferred. Independent
+review found0 Critical,0 Important and0 Minor issues. Evidence:
 `build/clock-replay-scratch-path-20261128/`. Broader inventory and excluded
 coverage item1 remain open.
+
+Task212 is merged and pushed as `d53c07d`. Five qualification checks and
+three merged-result checks pass. The two real-file lifecycle methods and two
+preflight methods are fresh; unchanged Task211 native replay/source-build
+results remain retained evidence. All117 stashes are preserved. The owned task
+branch is retired; only its ledger/helper are archived, with the detached
+worktree and sibling state retained. Evidence:
+`build/clock-replay-scratch-path-20261128/`.

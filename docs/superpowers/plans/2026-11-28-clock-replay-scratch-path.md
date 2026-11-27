@@ -34,10 +34,14 @@ qualified manifests, canonical files, replay and source-build evidence.
   expected one copy-case failure, wait positive, no setup error.
 - [x] Move exactly the print line. Both lifecycle methods and two preflight
   methods pass; compare parent/current bytes excluding exactly that line.
-- [ ] Archive probes; run make dist, exact four document members,4135/48/2617
+- [x] Archive probes; run make dist, exact four document members,4135/48/2617
   identity and whitespace checks. Read selected diff and commit. Run task-done
   with python3 tests/.task212-check.py; expected all gates pass.
-- [ ] One fresh whole-branch review, regrade, repair only blocking findings once
+- [x] One fresh whole-branch review, regrade, repair only blocking findings once
   with RED-to-GREEN tests, defer Minors, no rereview.
-- [ ] Merge master, verify final tracked/package/input identities, push, archive
+- [x] Merge master, verify final tracked/package/input identities, push, archive
   owned ledger/helpers and retire branch, retaining the detached worktree.
+
+Completed at `bd5d962`, merged and pushed as `d53c07d`.
+Independent review0C/0I/0M; one inherited finding resolved,25 remain.
+Five qualification and three merged-result checks pass;117 stashes preserved.
