@@ -2508,3 +2508,30 @@ qualified source archive, review, ledger and helper copies remain under
 `build/period-partial-diagnostics-20261128/`. The reusable detached worktree and
 sibling ledgers remain available. Broader inventory and excluded coverage item1
 remain open.
+
+
+## Task206 period diagnostic spans and edits
+
+A known invalid separate period unit now highlights its own literal token.
+Invalid values keep their value range. Acceptance, normalization and runtime
+arguments remain unchanged. The maintained LSP matrix now opens once and sends
+27 versioned full-sync edits, checking published versions, literal spans and
+valid corrections at both PDL levels. Formatter controls remain idempotent.
+
+Protected parent products fail six literal unit-span assertions; the corrected
+frontend passes all 56 operand checks. A stale-edit client control passes the
+old regression and causes 24 expected assertion failures in the new one, with
+no tooling errors. The real server passes. This is test-effectiveness evidence,
+not a production server failure. Exact controls and requests are retained.
+
+Before packaging, 11 Python reports contain 193 tests. Complete normal/static
+frontends, focused generator diagnostics, two default leak-enabled CLI runs
+and three C++ quality checks pass. Source build/install and exact identities
+follow in the qualification receipt: 4133 input paths with only two changed,
+and 48 rebuilt/qualified products. Task205 full native/event evidence remains
+historical; no new full native/event/vendor/performance claim is made.
+
+Two inherited findings are addressed; the candidate remainder is 32 minus 2
+= 30. Independent review and integration remain pending. Evidence:
+`build/period-diagnostic-edits-20261128/`. Broader inventory and excluded
+coverage item1 remain open.
