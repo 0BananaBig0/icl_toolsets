@@ -2677,3 +2677,32 @@ original/corrected receipt, driver copies, review and ledger remain under
 `build/clock-evidence-receipts-20261128/`. The reusable detached worktree and
 sibling ledgers remain available. Broader inventory and excluded coverage item1
 remain open.
+
+
+## Task210 dated erratum and isolated replay guide
+
+The correction sidecars now explicitly record 2026-11-28 in Asia/Shanghai
+and identify Task210 as the date-annotation task. The Task209 native receipt
+modification date and Git commit date corroborate that correction date. Exact
+undated sidecar bytes are preserved; native payload and archived driver bytes
+remain unchanged.
+
+The [maintainer guide](clock-evidence-reproduction.md) names the retained
+workspace prerequisites and seeds two manifests in a new scratch directory.
+It verifies the archived source digest, redirects a derived driver copy and
+omits metadata writes. Original and derived hashes are distinct and retained;
+the active script lives under tests/ and its execution copy accompanies the
+scratch receipts. Success, failure logs and preservation checks are explicit.
+
+The author executed the literal published command successfully: 270 native
+replay processes and 16 parser calls reproduce all expected outputs, with
+the existing 10s/512MiB bounds. All 2617 canonical file hashes remain unchanged.
+The raw walkthrough source, log and 1268 result files are retained. This is
+an author self-check; independent reader verification is pending.
+
+All 4135 qualified inputs and 48 products remain identical. Source build/install
+and exact four-member package checks follow in the qualification receipt.
+Two inherited follow-ups are candidate closures; 25 findings remain pending
+independent review and integration. Evidence:
+`build/clock-evidence-replay-guide-20261128/`. Broader inventory and excluded
+coverage item1 remain open.
