@@ -259,9 +259,9 @@ void TestOpaqueCrossingPreparation() {
                          {"client", "10", "-si", "0b1011010011", "-so", "0bx"},
                          "open first",
                          {}});
-    if (stable) scheduler.ApplyScan(ChildScan());
+    if (stable) scheduler.ApplyScan(ChildScan("166"));
     pattern::ScanScheduler copy(scheduler);
-    auto requested = ChildScan("60");
+    auto requested = ChildScan("54");
     requested.arguments[0] = "second.local";
     std::vector<pattern::ScanStep> prefix(1);
     prefix.front().input = "unchanged";
@@ -286,7 +286,7 @@ void TestOpaqueCrossingPreparation() {
           actual = bits;
           ++deliveries;
         });
-    const std::string prior = stable ? "10100101" : "00000000";
+    const std::string prior = stable ? "10100110" : "00000000";
     Require(prefix.size() == 1 && physical.arguments[1] == "26" &&
                 actual == "xxxxxxxx" && deliveries == 1 && assigned.empty(),
             "opaque-aware preparation emits one opening and one requested "
@@ -295,7 +295,7 @@ void TestOpaqueCrossingPreparation() {
                         prefix.front().serial.rend()) ==
                     "101" + prior + "11" + "10011" &&
                 physical.arguments[3] ==
-                    "0b101" + prior + "1" + "00111100" + "1" + "10011",
+                    "0b101" + prior + "1" + "00110110" + "1" + "10011",
             "native preparation uses declared default or prior stable opaque "
             "payload");
     CheckPublicSteps(netlist, prefix);
@@ -312,7 +312,7 @@ void TestOpaqueCrossingPreparation() {
         later.size() == 1 &&
             std::string(later.front().serial.rbegin(),
                         later.front().serial.rend()) ==
-                "101" + prior + "1" + "00111100" + "1" + "10011",
+                "101" + prior + "1" + "00110110" + "1" + "10011",
         "prepared queues preserve stable completion for later ordinary frames");
   }
 }

@@ -300,6 +300,13 @@ Module Top {
   }
   Require(readback(operations, false)->bits.empty(),
           "published deltas are consumed exactly once");
+  Require(readback(operations, true)->failures == 5,
+          "readback clear returns the accumulated failures");
+  Require(
+      preview(operations) == 0 && preview(operations) == 0,
+      "status previews share the readback clear without replaying failures");
+  Require(readback(operations, false)->failures == 0,
+          "readback retains the shared cleared status");
 }
 void TestOrderedStatusClearEvents() {
   const auto note = [](const std::string& count) {
