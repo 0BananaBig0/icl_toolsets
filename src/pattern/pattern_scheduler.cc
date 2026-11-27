@@ -8247,10 +8247,12 @@ class ScanScheduler::Impl {
                 model.eval(frame.read.at(id), true).is_true()) {
               AppendReadScope(netlist_.nodes[id], requested->second, read_scope,
                               &logical_reads);
-            } else if (!independent_instructions && client_group.empty() &&
+            } else if ((read_scope.empty() ||
+                        (!independent_instructions && client_group.empty())) &&
                        instruction_registers_.count(id) &&
                        requested == expected.end()) {
-              // Ordinary TAP scans retain their implicit IR capture checks.
+              // Write-only scans retain every implicit IR check. Mixed reads
+              // keep their existing logical scope.
               logical_reads.emplace(name, bits);
             }
           }

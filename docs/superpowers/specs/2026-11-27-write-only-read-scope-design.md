@@ -34,3 +34,11 @@ retaining prior provenance, both fresh jobs and the distinct native logical
 trace. All other directional snapshot bytes remain unchanged. Rerun the full
 project check after this certificate update; reuse other checks only with exact
 unchanged relevant inputs and product hashes.
+
+
+The single review repair retains every previously generated implicit IR capture
+comparison when read_scope is empty, including independent mixed write-only
+TAP groups. Read-containing mixed groups keep their established logical scope.
+The additional test checks the cared tap2 comparison in the final apply group
+for independent/shared TMS wiring in default and modeled modes, with exact
+source/flat/generated replay. The review's overview-prose Minor is deferred.

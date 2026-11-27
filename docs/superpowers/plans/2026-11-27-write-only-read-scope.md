@@ -34,7 +34,14 @@
 - [x] Run three-round 16/128-register changed-path measurements plus existing sparse-scale and feedback controls, fresh full make check, affected normal/static and leak-enabled suites, changed-C++ quality, corpus/editor and source package build/install. Expected: unchanged limits, explicit skips and exact source/product bindings.
 - [ ] Update guidance, commit the finalized selected diff and run task-done using python3 tests/.task200-check.py. Expected: all required qualification and artifact checks pass.
 
+## One review repair pass
+
+- [x] Reproduce loss of the final-group tap2 cared capture comparison in four wiring/mode cases before repairing production code.
+- [x] Retain implicit IR checks on empty logical read scope, preserve mixed read-containing behavior and pass the focused regression.
+- [x] Run fresh complete qualification and measurements on final repaired sources; no reviewed executable evidence is reused after the C++ change.
+- [ ] Commit the repaired selected diff and run task-done; defer the overview Minor, for 45 total.
+
 ## Branch completion
 
-- [ ] One fresh independent whole-branch review; regrade findings and declined areas, fix Critical/Important findings in one test-first pass, defer Minors.
+- [x] One independent review of 55d1732 completed: 0 Critical, 1 Important for the single repair pass, 1 new Minor deferred. No repaired-code re-review.
 - [ ] Merge, verify merged result, push, retire only the owned branch and archive only this workspace; continue remaining inventory.
