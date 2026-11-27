@@ -1224,7 +1224,10 @@ void Document::Analyze(std::vector<Command>* commands, Context context,
                     ? std::make_optional(concrete(4) ? literal(4) : "ns")
                     : std::nullopt);
           } catch (const std::runtime_error& error) {
-            Error(words[3].range, error.what());
+            const size_t operand =
+                words.size() == 5 && concrete(4) && !IsTimeUnit(literal(4)) ? 4
+                                                                            : 3;
+            Error(words[operand].range, error.what());
           }
         }
       } else {

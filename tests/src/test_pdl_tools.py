@@ -20,7 +20,8 @@ REVIEW_PROBES = json.loads((ROOT / 'tests/cases/ours/pdl/review_probes.json').re
 CLOCK_PERIOD_OPERANDS = (
     ('$p bogus', False), ('$p {}', False), ('0 $unit', False),
     ('0.0e-999 $unit', False), ('-1 $unit', False), ('17ns $unit', False),
-    ('bogus $unit', False), ('$p ns', True), ('17 $unit', True),
+    ('bogus $unit', False), ('17 bogus', False), ('0 ns', False),
+    ('17ns ns', False), ('$p ns', True), ('17 $unit', True),
     ('1.25 $unit', True), ('$p $unit', True),
 )
 
@@ -475,6 +476,14 @@ class LanguageServer(unittest.TestCase):
                                   and m['params']['uri'] == self.uri, 'diagnostics')
         return result['params']
 
+    def change(self, text, version):
+        self.client.notify('textDocument/didChange', {
+            'textDocument': dict(uri=self.uri, version=version),
+            'contentChanges': [{'text': text}]})
+        result = self.client.wait(lambda m: m.get('method') == 'textDocument/publishDiagnostics'
+                                  and m['params']['uri'] == self.uri, 'diagnostics')
+        return result['params']
+
     def query(self, method, line, character, **extra):
         return self.request('textDocument/' + method, dict(
             textDocument={'uri': self.uri}, position=dict(line=line, character=character), **extra))
@@ -511,10 +520,20 @@ class LanguageServer(unittest.TestCase):
                     version += 1
                     text = header + ('iProc f {p unit} {'
                                      f'iClockOverride osc -period {period}}}\n')
-                    diagnostics = self.open(text, version)['diagnostics']
+                    published = self.open(text, version) if version == 1 else self.change(text, version)
+                    self.assertEqual(published['version'], version)
+                    diagnostics = published['diagnostics']
                     self.assertEqual(bool(diagnostics), not valid)
                     if diagnostics:
                         self.assertIn('period', diagnostics[0]['message'])
+                        token = {'$p bogus': 'bogus', '$p {}': '{}',
+                                 '17 bogus': 'bogus'}.get(period, period.split()[0])
+                        start = text.rindex(token)
+                        line = text[:start].count('\n')
+                        column = start - text.rfind('\n', 0, start) - 1
+                        self.assertEqual(diagnostics[0]['range'], {
+                            'start': dict(line=line, character=column),
+                            'end': dict(line=line, character=column + len(token))})
 
     def test_imported_icl_document_cannot_be_formatted_as_pdl(self):
         self.uri = (self.root / 'model.icl').as_uri()
