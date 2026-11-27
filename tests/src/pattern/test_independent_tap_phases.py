@@ -184,6 +184,33 @@ class IndependentTapPhases(unittest.TestCase):
                             'iWrite c1.value 9; iApply -together;\n',
                             widths=(4,) * count, ir_widths=(4,) * count)
 
+    def test_implicit_instruction_setup_preserves_pending_capture(self):
+        source, models = helpers.network()
+        source = source.replace('ScanInSource si; ResetValue 0;',
+                                'ScanInSource si; CaptureSource value; ResetValue 0;')
+        source = source.replace('DataOutPort q', 'ToSelectPort on {Source select;} DataOutPort q')
+        source = source.replace('Module MultiTapTop {',
+                                'Module MultiTapTop {Alias pair[10:0] = '
+                                'tap0.INSTRUCTION,c1.value {AccessTogether;}')
+        source = source.replace(' TRSTPort TRST1;',
+                                " TRSTPort TRST1; DataMux prep SelectedBy c1.on "
+                                "{1'b0:TRST1;1'b1:1'b0;}")
+        source = source.replace('InputPort reset = TRST1;', 'InputPort reset = prep;')
+        for expected in ('128', '211', '0bxxxxxxxxxxx'):
+            pdl = self.prepare(source, models, 2, 'iReset; iState c1.value 83; '
+                               f'iRead pair {expected}; iApply;')
+            (self.root / 'result.pdl').write_text('prior output\n')
+            self.run_tool(pdl, ok=False, extra=('--model_readback',))
+            self.assertEqual((self.root / 'result.pdl').read_text(), 'prior output\n')
+        safe = source.replace('InputPort reset = prep;', 'InputPort reset = TRST1;')
+        output = self.replay_source(safe, models, 2,
+                                   'iReset; iState c1.value 83; iRead pair 128; iApply; '
+                                   'iNote actual=[iGetReadData c1.value -bin]; '
+                                   'iNote mismatch=[iGetMiscompares pair -bin];',
+                                   extra=('--model_readback',))
+        self.assertIn('iNote actual=0b1010011', output)
+        self.assertIn('iNote mismatch=0b00001010011', output)
+
     def test_same_tap_simultaneous_ir_and_dr_remains_rejected(self):
         source, models = helpers.network()
         pdl = self.prepare(source, models, 2,

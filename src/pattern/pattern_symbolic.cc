@@ -80,11 +80,13 @@ SymbolicValue SymbolicValue::Literal(z3::context& context,
 SymbolicNetwork::SymbolicNetwork(const Netlist& netlist, z3::context& context,
                                  std::map<size_t, SymbolicValue> assignments,
                                  std::string global_resets,
-                                 const std::map<size_t, SymbolicValue>* shifts)
+                                 const std::map<size_t, SymbolicValue>* shifts,
+                                 SymbolicNetwork* access_context)
     : netlist_(netlist),
       context_(context),
       has_shift_state_(shifts != nullptr),
       global_resets_(std::move(global_resets)),
+      access_context_(access_context),
       one_hot_(netlist) {
   if (global_resets_.size() != 2 ||
       global_resets_.find_first_not_of("01x") != std::string::npos) {
@@ -102,6 +104,7 @@ SymbolicNetwork::SymbolicNetwork(const Netlist& netlist, z3::context& context,
     cache_.emplace(Key{id, false},
                    SymbolicValue{value.bits & value.known, value.known});
   }
+  if (access_context_) observation_assignments_ = std::move(assignments);
   if (shifts) {
     for (const auto& [id, value] : *shifts) {
       const auto& node = netlist.nodes.at(id);
@@ -134,6 +137,7 @@ void SymbolicNetwork::Assign(
     const std::map<size_t, SymbolicValue>& assignments) {
   if (assignments.empty()) return;
   for (const auto& [id, value] : assignments) CheckAssignment(id, value);
+  observation_payloads_.reset();
   if (!track_derived_) {
     for (auto it = cache_.begin(); it != cache_.end();) {
       const auto& node = netlist_.nodes.at(it->first.first);
@@ -151,6 +155,7 @@ void SymbolicNetwork::Assign(
     derived_.clear();
   }
   for (const auto& [id, value] : assignments) {
+    if (access_context_) observation_assignments_.insert_or_assign(id, value);
     cache_.insert_or_assign(
         Key{id, false}, SymbolicValue{value.bits & value.known, value.known});
   }
@@ -426,6 +431,15 @@ SymbolicValue SymbolicNetwork::Compute(size_t id, bool scan) {
       }
     }
   } else if (node.model == ModelKind::kGroup) {
+    auto* payloads = this;
+    if (access_context_) {
+      if (!observation_payloads_) {
+        observation_payloads_ = std::make_unique<SymbolicNetwork>(
+            netlist_, context_, observation_assignments_, global_resets_);
+      }
+      // A group's selection is observed data, including its old port enables.
+      payloads = observation_payloads_.get();
+    }
     auto found = context_.bool_val(false), uncertain = context_.bool_val(false);
     const auto pad = [&](const SymbolicValue& value, unsigned width) {
       const auto size = value.bits.get_sort().bv_size();
@@ -443,7 +457,7 @@ SymbolicValue SymbolicNetwork::Compute(size_t id, bool scan) {
       const auto active = known && enabled.bits == context_.bv_val(1, 1);
       uncertain = uncertain || !known || (found && active);
       node.OneHotSourceBit(source, 0);
-      const auto next = Bits(descriptor.bits, serial);
+      const auto next = payloads->Bits(descriptor.bits, serial);
       const auto width = std::max(result.bits.get_sort().bv_size(),
                                   next.bits.get_sort().bv_size());
       result = Select(active, pad(next, width), pad(result, width));
@@ -456,7 +470,9 @@ SymbolicValue SymbolicNetwork::Compute(size_t id, bool scan) {
   }
   const auto enable = node.inputs.find("Enable");
   if (enable != node.inputs.end()) {
-    const auto active = Read(enable->second.at(0));
+    const auto active = access_context_
+                            ? access_context_->Read(enable->second.at(0))
+                            : Read(enable->second.at(0));
     result = Select(active.known == context_.bv_val(1, 1) &&
                         active.bits == context_.bv_val(1, 1),
                     result, unknown);

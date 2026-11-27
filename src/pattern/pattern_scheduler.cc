@@ -4420,10 +4420,23 @@ class ScanScheduler::Impl {
     return primary_state_candidates_;
   }
 
+  Values ObservationValues(const Values& current,
+                           const NetworkState& original) {
+    auto values = current;
+    for (auto& [id, value] : values) {
+      if (netlist_.nodes[id].model == ModelKind::kRegister) {
+        value = SymbolicValue::Literal(context_, original.Value(id));
+      }
+    }
+    return values;
+  }
+
   std::vector<ScanStep> SolvePrimaryWrites(
       const std::vector<Operation>& operations, bool together,
       const std::map<size_t, std::string>& preserved, bool explicit_writes,
-      const PioObservation& observe = {}) {
+      const PioObservation& observe = {},
+      const NetworkState* read_origin = nullptr) {
+    if (!read_origin) read_origin = &state_;
     const auto& data_plan = state_.DataRegisters();
     const bool independent_resets = HasOnlyFeedbackResetSinks();
     std::map<size_t, std::string> goals;
@@ -4810,6 +4823,12 @@ class ScanScheduler::Impl {
                                 next.at(id).known == state.at(id).known));
           }
         }
+        std::optional<SymbolicNetwork> original_observations;
+        if (!reads.empty()) {
+          original_observations.emplace(netlist_, context_,
+                                        ObservationValues(next, *read_origin),
+                                        global_resets_, nullptr, values.get());
+        }
         auto all_reads = context_.bool_val(true);
         std::map<std::pair<Key, char>, z3::expr> output_comparisons;
         for (const auto& [id, bits] : reads) {
@@ -4820,6 +4839,11 @@ class ScanScheduler::Impl {
           all_reads = all_reads && observe;
           for (const auto& [index, expected] : bits) {
             const Key key{id, index};
+            const auto actual = values->Read({id, index});
+            const auto original = original_observations->Read({id, index});
+            solver.add(
+                z3::implies(observe, actual.bits == original.bits &&
+                                         actual.known == original.known));
             const auto& choices = routes->routes.at(key);
             auto selected_count = context_.int_val(0);
             for (size_t route = 0; route < choices.size(); ++route) {
@@ -6887,7 +6911,9 @@ class ScanScheduler::Impl {
       const std::map<size_t, std::string>& preserved = {},
       bool explicit_writes = true, std::optional<bool> event_mode = false,
       std::optional<size_t> permitted_tap_data = std::nullopt,
-      bool physical = false, const PioObservation& observe = {}) {
+      bool physical = false, const PioObservation& observe = {},
+      const NetworkState* read_origin = nullptr) {
+    if (!read_origin) read_origin = &state_;
     const auto end_goals = EndGoals(operations);
     if (operations.empty() && !NeedsEndState(end_goals)) return {};
     const auto& data_plan = state_.DataRegisters();
@@ -6924,7 +6950,7 @@ class ScanScheduler::Impl {
       std::optional<std::vector<ScanStep>> primary;
       try {
         primary = SolvePrimaryWrites(operations, together, preserved,
-                                     explicit_writes, collect);
+                                     explicit_writes, collect, read_origin);
       } catch (const std::runtime_error&) {
         // Reset sinks can still require scan preparation to enable a read.
       }
@@ -6941,7 +6967,7 @@ class ScanScheduler::Impl {
                           .access_together.empty();
             })) {
       return SolvePrimaryWrites(operations, together, preserved,
-                                explicit_writes, observe);
+                                explicit_writes, observe, read_origin);
     }
     if (tap_ && !tap_ready_) {
       throw std::runtime_error(
@@ -7396,9 +7422,10 @@ class ScanScheduler::Impl {
                                 operations.front().origin,
                                 {}});
           }
-          auto final = trial.Solve(
-              requests, together, max_steps - 1, fixed_loads, false, preserved,
-              explicit_writes, true, permitted_tap_data, physical, collect);
+          auto final =
+              trial.Solve(requests, together, max_steps - 1, fixed_loads, false,
+                          preserved, explicit_writes, true, permitted_tap_data,
+                          physical, collect, read_origin);
           steps.insert(steps.end(), std::make_move_iterator(final.begin()),
                        std::make_move_iterator(final.end()));
           prepared = std::move(steps);
@@ -7587,6 +7614,12 @@ class ScanScheduler::Impl {
             (tap_ || client_controls_) ? event : any_drive;
         SettleResets(&state, &fills, &before_capture, &solver);
         SymbolicNetwork values(netlist_, context_, state, global_resets_);
+        std::optional<SymbolicNetwork> original_observations;
+        if (!data_reads.empty() || !expected.empty()) {
+          original_observations.emplace(netlist_, context_,
+                                        ObservationValues(state, *read_origin),
+                                        global_resets_, nullptr, &values);
+        }
         SelectScan(solver, values, time, frame);
         const auto scan_events =
             ConstrainScanControls(solver, state, frame, time, events);
@@ -7628,6 +7661,19 @@ class ScanScheduler::Impl {
                     : context_.bool_val(true);
             frame.read.emplace(id, active && ready && !read.at(id) &&
                                        CaptureReady(scan_events, id));
+            const auto capture = node.inputs.find("CaptureSource");
+            if (capture != node.inputs.end()) {
+              for (const auto& bit : read_scope) {
+                if (bit.first != id) continue;
+                const auto source =
+                    capture->second.at(Offset(node, bit.second));
+                const auto actual = values.Read(source);
+                const auto original = original_observations->Read(source);
+                solver.add(z3::implies(frame.read.at(id),
+                                       actual.bits == original.bits &&
+                                           actual.known == original.known));
+              }
+            }
             read.at(id) = read.at(id) || frame.read.at(id);
           }
           const auto loaded = context_.bv_const(
@@ -7756,6 +7802,13 @@ class ScanScheduler::Impl {
                   .c_str());
           solver.add(z3::implies(observe, !data_read_done.at(id)));
           for (const auto& [index, expected] : bits) {
+            // Preserve the requested data under its actual capture controls,
+            // independently of comparison bits or unrelated observation arms.
+            const auto actual = values.Read({id, index});
+            const auto original = original_observations->Read({id, index});
+            solver.add(
+                z3::implies(observe, actual.bits == original.bits &&
+                                         actual.known == original.known));
             auto count = context_.int_val(0);
             const auto& choices = routes->routes.at({id, index});
             for (size_t route = 0; route < choices.size(); ++route) {
