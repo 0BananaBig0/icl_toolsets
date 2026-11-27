@@ -1,0 +1,20 @@
+iPDLLevel 0
+iProcsForModule ResetAccessTop
+iReset
+iWrite tap.INSTRUCTION 0b0011
+iRead tap.INSTRUCTION 0b0001
+iApply
+iWrite core.gate 0b0
+iWrite core.root 0b1
+iRead core.branch.release 0bx
+iApply
+iWrite core.branch.release 0b1
+iWrite core.gate 0b1
+iWrite core.root 0b1
+iApply
+iWrite core.a.value 0b1010
+iWrite core.b.value 0b0011
+iWrite core.branch.release 0b1
+iWrite core.gate 0b0
+iWrite core.root 0b1
+iApply

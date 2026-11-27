@@ -23,6 +23,24 @@ class IndependentTapPhases(unittest.TestCase):
         self.assertIn('iWrite tap0.INSTRUCTION 0b0011', text)
         self.assertIn('iWrite c1.value 0b1010101', text)
 
+    def test_write_only_mixed_group_keeps_unrequested_ir_capture(self):
+        source, models = helpers.network((4, 4, 4), (4, 4, 4))
+        body = ('iReset; iWrite tap1.INSTRUCTION 3; iApply; '
+                'iWrite tap0.INSTRUCTION 3; iWrite c1.value 5; iApply -together;\n')
+        for shared in (False, True):
+            for modeled in (False, True):
+                with self.subTest(shared=shared, modeled=modeled):
+                    text = self.replay_source(
+                        source, models.replace('TMS2', 'TMS0') if shared else models,
+                        3, body, extra=('--model_readback',) if modeled else ())
+                    self.assertEqual(text.count('iApply'), 2)
+                    final = text.split('iApply')[-2]
+                    self.assertIn('iWrite tap2.INSTRUCTION 0b0010\n', final)
+                    self.assertIn('iRead tap2.INSTRUCTION 0b0001\n', final)
+                    self.assertIn('iWrite tap0.INSTRUCTION 0b0011\n', final)
+                    self.assertIn('iWrite c1.value 0b0101\n', final)
+                    self.assertTrue(text.endswith('iApply -together\n'))
+
     def replay_source(self, source, models, count, body, extra=()):
         pdl = self.prepare(source, models, count, body)
         output = self.run_tool(pdl, extra=('--debug', *extra))

@@ -120,14 +120,29 @@ class TapPdlReplay(unittest.TestCase):
                        '--top_module', 'ResetAccessTop']
         text = self.run_tool(fixture / 'vendor.pdl', extra=('--local_reset', 'reset.pdl'))
         groups = text.split('iApply\n')
+        self.assertEqual(text.count('iApply\n'), 4)
         self.assertIn('iWrite core.root 0b1\n', groups[1])
-        self.assertIn('iRead core.branch.release 0bx\n', groups[1])
+        self.assertNotIn('iRead core.branch.release', groups[1])
         self.assertNotIn('iWrite core.branch.release', groups[1])
         self.assertIn('iWrite core.branch.release 0b1\n', groups[2])
+        self.assertIn('iWrite core.a.value 0b1010\n', groups[3])
+        self.assertIn('iWrite core.b.value 0b0011\n', groups[3])
         self.assertEqual(text, self.run_tool(self.root / 'result.pdl', 'replay.pdl'))
         reset = (self.root / 'reset.pdl').read_text()
         self.assertNotIn('tap.INSTRUCTION', reset)
         self.assertNotIn('iRead core.branch.release', reset)
+        tail = self.root / 'history-tail.pdl'
+        tail.write_text('iPDLLevel 1; '
+                        'iNote unread=[iGetReadData core.branch.release -bin]; '
+                        'iNote mismatch=[iGetMiscompares core.branch.release -bin];\n')
+        for program, name, local in (
+                (fixture / 'vendor.pdl', 'source-history.pdl',
+                 ('--local_reset', 'source-reset.pdl')),
+                (self.root / 'result.pdl', 'generated-history.pdl', ())):
+            output = self.run_tool(program, name,
+                                   extra=(*local, '--model_readback', '--pdl', str(tail)))
+            self.assertIn('iNote unread=0bx\n', output)
+            self.assertIn('iNote mismatch=0bx\n', output)
 
 
 if __name__ == '__main__':
