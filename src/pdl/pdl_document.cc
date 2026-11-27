@@ -1216,11 +1216,13 @@ void Document::Analyze(std::vector<Command>* commands, Context context,
         if (words.size() != 4 && words.size() != 5) {
           Error(words[2].range,
                 "period form expects one value and optional time unit");
-        } else if (concrete(3) && (words.size() == 4 || concrete(4))) {
+        } else if (concrete(3) || (words.size() == 5 && concrete(4))) {
           try {
             NormalizeClockPeriod(
-                literal(3), words.size() == 5 ? std::make_optional(literal(4))
-                                              : std::nullopt);
+                concrete(3) ? literal(3) : "1",
+                words.size() == 5
+                    ? std::make_optional(concrete(4) ? literal(4) : "ns")
+                    : std::nullopt);
           } catch (const std::runtime_error& error) {
             Error(words[3].range, error.what());
           }
