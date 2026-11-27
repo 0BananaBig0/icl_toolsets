@@ -2571,7 +2571,17 @@ build/install and final identities follow in the qualification receipt:
 4134 inputs, one added metatest and three modified existing files, with 4130
 unchanged. Unrelated C++/frontend/native-event/vendor suites are not rerun.
 
-Two inherited findings are addressed; the candidate remainder is 30 minus 2
-= 28. Independent review and integration remain pending. Evidence:
+The two inherited benchmark findings are resolved. The sole independent review
+found 0 Critical, 0 Important and 0 new Minor issues; 28 findings remain
+deferred. Integration results follow below. Evidence:
 `build/callback-postconditions-20261128/`. Broader inventory and excluded
 coverage item1 remain open.
+
+Task207 is merged and pushed to `master` as `8b89604`. All 12 qualification
+gates and four merged-result checks pass on identical 4134 inputs, seven required
+package members and 48 qualified products. Two merged Python reports contain
+16 tests. All 117 stashes are preserved. The owned branch is retired; its
+qualified source archive, review, ledger and helper copies remain under
+`build/callback-postconditions-20261128/`. The reusable detached worktree and
+sibling ledgers remain available. Broader inventory and excluded coverage item1
+remain open.

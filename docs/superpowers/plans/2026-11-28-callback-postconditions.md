@@ -33,5 +33,11 @@ Task1 covers each through literal controls and actual existing consumer matrices
 
 ## Branch completion
 
-- [ ] One independent whole-branch review; regrade findings and declined areas, one Critical/Important RED-to-GREEN repair wave if needed, defer Minors without rereview.
-- [ ] Merge master, verify merged behavior and unchanged qualified identities, push, archive only this ledger/helpers, retire this branch and continue the original inventory.
+- [x] One independent whole-branch review; regrade findings and declined areas, one Critical/Important RED-to-GREEN repair wave if needed, defer Minors without rereview.
+- [x] Merge master, verify merged behavior and unchanged qualified identities, push, archive only this ledger/helpers, retire this branch and continue the original inventory.
+
+Completed at `bff38bb`, merged and pushed as `8b89604`. Independent review:
+0 Critical, 0 Important, 0 new Minor issues; two inherited resolutions and
+28 remaining findings. All 12 qualification gates and four merged-result checks
+pass; 117 stashes are preserved. Evidence:
+`build/callback-postconditions-20261128/`.
