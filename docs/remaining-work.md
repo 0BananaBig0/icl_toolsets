@@ -2471,3 +2471,27 @@ branch is retired; its qualified source archive, fault controls, review, ledger
 and helper copies remain under `build/replay-boundaries-20261128/`. The reusable
 detached worktree and sibling ledgers remain available. Broader inventory and
 excluded coverage item1 remain open.
+
+
+## Task205 partial period operand diagnostics
+
+The shared frontend now diagnoses an invalid known period operand even when
+its neighbor is dynamic. Formatter and LSP declarations at both PDL levels
+reject invalid literal units, zero/negative values and suffixed values paired
+with a separate dynamic unit. Valid one/both-dynamic pairs remain accepted;
+fully concrete dispatch and clock event semantics are unchanged. Validation
+uses the existing period validator with harmless placeholders only for the
+unknown neighbor; placeholders are never emitted or executed.
+
+The protected parent produces 28 missing-diagnostic failures in the two new
+methods. The corrected frontend passes both methods and all affected checks.
+Before packaging, 20 Python reports contain 510 tests; all 15 native and
+15 default leak-enabled native suites, three leak-enabled CLI runs, complete
+normal/static frontend suites, focused clock/reset modules and three C++
+quality checks pass. Source build/install and final identities follow in the
+qualification receipt. Exactly two of 4133 input paths change. No new vendor,
+device, throughput or unrelated full-repository regression claim is made.
+
+The candidate inherited finding count is 31 minus 1 = 30. Independent review
+and integration remain pending. Evidence: `build/period-partial-diagnostics-20261128/`.
+Broader inventory and excluded coverage item1 remain open.

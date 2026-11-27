@@ -17,6 +17,12 @@ SERVER = None
 ROOT = Path(__file__).resolve().parents[2]
 HEADER = 'iPDLLevel 1 -version STD_1687_2014\niProcsForModule Demo\n'
 REVIEW_PROBES = json.loads((ROOT / 'tests/cases/ours/pdl/review_probes.json').read_text())
+CLOCK_PERIOD_OPERANDS = (
+    ('$p bogus', False), ('$p {}', False), ('0 $unit', False),
+    ('0.0e-999 $unit', False), ('-1 $unit', False), ('17ns $unit', False),
+    ('bogus $unit', False), ('$p ns', True), ('17 $unit', True),
+    ('1.25 $unit', True), ('$p $unit', True),
+)
 
 
 def parser_limits():
@@ -191,6 +197,20 @@ class Formatter(unittest.TestCase):
             self.assertEqual(run.returncode, 0, run.stderr)
         run = self.run_format(header + 'iProc f {p} {iClockOverride osc -period $p+1 us}\n')
         self.assertEqual(run.returncode, 2)
+
+    def test_clock_period_known_operands_beside_dynamic_neighbors(self):
+        for level in (0, 1):
+            header = HEADER.replace('iPDLLevel 1', f'iPDLLevel {level}')
+            for period, valid in CLOCK_PERIOD_OPERANDS:
+                with self.subTest(level=level, period=period):
+                    text = header + ('iProc f {p unit} {'
+                                     f'iClockOverride osc -period {period}}}\n')
+                    run = self.run_format(text)
+                    self.assertEqual(run.returncode, 0 if valid else 2, run.stderr)
+                    if valid:
+                        self.assertEqual(self.run_format(run.stdout).stdout, run.stdout)
+                    else:
+                        self.assertIn('period', run.stderr)
 
     def test_comments_strings_continuations_and_unknown_commands(self):
         source = HEADER + '# top\niProc run {} {\n# nested\nset s "a; # literal\\ntext"\ncustom {opaque; data} \\\n  more\niWrite reg(7:0) 0xA5; # trailing\niApply\n}\n'
@@ -481,6 +501,20 @@ class LanguageServer(unittest.TestCase):
             self.assertEqual(bool(diagnostics), period in ('0ns', '17 {}'))
             if diagnostics:
                 self.assertIn('period', diagnostics[0]['message'])
+
+    def test_clock_period_known_operands_beside_dynamic_neighbors(self):
+        version = 0
+        for level in (0, 1):
+            header = HEADER.replace('iPDLLevel 1', f'iPDLLevel {level}')
+            for period, valid in CLOCK_PERIOD_OPERANDS:
+                with self.subTest(level=level, period=period):
+                    version += 1
+                    text = header + ('iProc f {p unit} {'
+                                     f'iClockOverride osc -period {period}}}\n')
+                    diagnostics = self.open(text, version)['diagnostics']
+                    self.assertEqual(bool(diagnostics), not valid)
+                    if diagnostics:
+                        self.assertIn('period', diagnostics[0]['message'])
 
     def test_imported_icl_document_cannot_be_formatted_as_pdl(self):
         self.uri = (self.root / 'model.icl').as_uri()
