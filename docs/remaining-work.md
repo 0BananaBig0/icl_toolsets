@@ -2381,3 +2381,34 @@ preserved. The owned task branch is retired; its qualified source archive,
 review, ledger and helper copies remain under `build/deferred-guide-errata-20261128/`.
 The reusable detached worktree, sibling ledgers, broader inventory and excluded
 coverage item1 retain their status.
+
+
+## Task203 regression oracle maintenance
+
+Three maintained oracles now check shared preview/readback status clearing,
+nonpalindromic private opaque payloads through preparation and stable completion,
+and every first-group fanout target/value write without imposing write order.
+Controlled separate-owner and private-reversal mutants pass the old isolated
+native cases and fail the strengthened cases. A deliberately removed downstream
+write passes all nine old fanout coordinates and fails all nine strengthened
+coordinates. These controls demonstrate test discrimination, not production bugs.
+
+Task191's topology rejection finding was already fixed by Task192 commit
+`6f49496`: current cases use valid targets and exact intended diagnostics.
+An unrelated-diagnostic control passes the old historical cases and is rejected
+by both current cases; actual normal/static shared-input suites also pass.
+
+The 15-check qualification includes four complete native runs (two normal and
+two default leak-enabled), four normal/static CLI suite runs reporting
+58 tests, six changed-C++ quality checks, controlled-fault validation,
+identity/whitespace checks and source-package build/install. Each generator's
+existing nine-point fanout grid meets its 10-second bound for four replay forms.
+All 4133 tracked source/test paths remain: 4130 inputs and 40 executables,
+including every generator, retain their Task202 identities. Only three test
+files and the four rebuilt native test executables differ. No production,
+hardware eligibility, dependency, resource limit or performance claim changes.
+
+Four inherited findings are addressed; the candidate remainder is 38 minus 4 = 34.
+Independent review and integration remain pending. Evidence and exact fault
+artifacts are retained under `build/regression-oracles-20261128/`. Broader
+inventory and excluded strict-coverage item1 remain unchanged.
