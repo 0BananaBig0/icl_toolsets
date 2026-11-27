@@ -9,6 +9,8 @@ You need Python 3, `/usr/bin/time`, the qualified generator and trace tools in
 directories under `build/`. The historical parent binary and all original
 fixtures must still be present. A fresh source checkout alone is insufficient.
 The manifest checks stop the run if qualified inputs or products differ.
+Run Python with assertions enabled. The preflight rejects optimized execution;
+unset `PYTHONOPTIMIZE` and rerun normally if it reports that error.
 
 The archived driver uses fixed output paths. The command below verifies its
 digest and derives a separate copy with two changes: a new receipt directory,
@@ -29,6 +31,9 @@ import shutil
 import subprocess
 import sys
 import tempfile
+
+if not __debug__:
+    raise SystemExit('Unset PYTHONOPTIMIZE and rerun with assertions enabled')
 
 repo = Path.cwd()
 canonical = repo / 'build/clock-evidence-receipts-20261128'
