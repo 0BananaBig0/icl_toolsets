@@ -11865,7 +11865,9 @@ All four Critical and two Important review findings are fixed in one test-first
 pass, including the selected-client, direct-capture, partial-bit, inactive-route,
 selector and split-TAP-prefix cases. A concrete OneHot repair regression also
 passes. No repaired-code re-review was used; the 44 inherited Minors remain
-deferred. Integration remains pending.
+deferred. Task199 is merged at 9eedf42 and pushed to master. All 12
+merged-result checks pass on 4126 identical inputs and 25 copied qualified
+executables. The owned task branch is retired and all 117 stashes are preserved.
 
 Three-round changed-path measurements pass 12 matched parent/current points
 and 36 source/flat/generated processes with up to 128 pending 8-bit registers.

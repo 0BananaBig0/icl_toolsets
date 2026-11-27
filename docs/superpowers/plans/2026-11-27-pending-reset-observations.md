@@ -49,9 +49,9 @@ The single repair pass replaces the superseded whole-word frame hold above:
   OneHot selection/payload enables; add and pass its concrete repair regression.
 - [x] Run fresh full qualification on the repaired sources, including normal/static
   and leak-enabled independent-TAP cases, 12 C++ quality checks and both scale sets.
-- [ ] Record all six dispositions, commit the reviewed repair and run task-done.
+- [x] Record all six dispositions, commit the reviewed repair and run task-done.
 
 ## Branch completion
 
 - [x] One fresh independent whole-branch review completed on 084a827; regrade all six findings for one Critical/Important repair pass, retain 44 inherited Minors. No repaired-code re-review.
-- [ ] Merge, verify merged result, push, detach reused worktree, delete only owned merged branch and archive only this workspace. Expected: clean aligned master, 117 stashes preserved; continue remaining inventory.
+- [x] Merge, verify merged result, push, detach reused worktree, delete only owned merged branch and archive only this workspace. Expected: clean aligned master, 117 stashes preserved; continue remaining inventory.
