@@ -2188,4 +2188,11 @@ dependencies and public exact replay. Final post-review qualification passes all
 24 C++ quality checks, the complete matrix, corpus/editor and source packaging.
 The final checker binds 4126 inputs and 44 executables; five optional reference
 tests are skipped and 44 inherited Minors remain deferred. No second review was
-used. Master integration is pending.
+used. Task198 is merged at acb0140 and pushed to master. All nine merged-result
+checks pass with 4126 identical inputs and 25 copied qualified executables. The
+owned task branch is deleted and its ledger archived; all 117 stashes remain.
+
+A separate pre-existing defect remains: ordinary acyclic reset preparation can
+erase a pending scan observation. Parent and current reproductions are retained
+in `build/feedback-reset-pulses-20261127/follow-up-discovery.json`; this is the
+next task under original items3/6. The broader inventory remains open.

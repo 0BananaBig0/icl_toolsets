@@ -100,7 +100,7 @@ and docs/remaining-work.md. Reuse the existing Makefile feedback module wiring.
 
 - [x] One fresh independent whole-branch review; regrade findings/declined areas,
   one Critical/Important test-first repair pass if needed; defer Minors.
-- [ ] Merge into parent master, verify the merged result, push, detach the reused
+- [x] Merge into parent master, verify the merged result, push, detach the reused
   worktree, safely delete only this owned branch and archive only this workspace.
   Expected: clean aligned master/origin,117 unchanged stashes and no task backlog;
   continue the remaining inventory.

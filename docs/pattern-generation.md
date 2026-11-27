@@ -11834,3 +11834,7 @@ packaging. Exact hashes bind 4126 inputs and 44 executables. Five optional
 reference tests were skipped in this full run; no new vendor or live-device
 qualification is claimed. The broader inventory and 44 inherited Minors remain
 open, with item1 excluded.
+
+Task198 is merged at acb0140 and pushed to master. Nine merged-result checks
+pass against 4126 identical inputs and 25 copied qualified executables; the
+completed task branch is retired and all 117 stashes are preserved.
