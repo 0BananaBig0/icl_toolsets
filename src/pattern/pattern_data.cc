@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 #include "pattern/pattern_data.h"
 
+#include <deque>
 #include <set>
 #include <stdexcept>
 #include <tuple>
@@ -9,6 +10,32 @@
 #include "utility/strong_components.h"
 
 namespace pattern {
+namespace {
+void AppendDependencySources(const NetlistNode& node, int64_t index,
+                             bool controls,
+                             std::vector<BitReference>* pending) {
+  const size_t position =
+      node.left >= node.right ? node.left - index : index - node.left;
+  for (const auto& [role, bits] : node.inputs) {
+    if (role != "SelectedBy" && bits.size() == node.Width()) {
+      pending->push_back(bits.at(position));
+    } else if (controls) {
+      pending->insert(pending->end(), bits.begin(), bits.end());
+    }
+  }
+  for (const auto& choice : node.choices) {
+    pending->push_back(choice.source.at(position));
+  }
+  for (size_t source = 0; source < node.one_hot_sources.size(); ++source) {
+    pending->push_back(node.OneHotSourceBit(source, position));
+  }
+  if (controls) {
+    for (const auto& term : node.logic) {
+      pending->insert(pending->end(), term.signals.begin(), term.signals.end());
+    }
+  }
+}
+}  // namespace
 DataReadRoutes::DataReadRoutes(const Netlist& netlist, DataReadMode mode) {
   constexpr size_t kMissing = std::numeric_limits<size_t>::max();
   struct Pending {
@@ -156,7 +183,8 @@ DataRegisterPlan::DataRegisterPlan(const Netlist& netlist) {
         implicit_controls.push_back(bit);
       }
     };
-    std::set<size_t> visited;
+    std::set<std::pair<size_t, int64_t>> visited;
+    std::set<size_t> expanded_controls;
     auto& sources = dependencies[id];
     while (!pending.empty()) {
       const auto ref = pending.back();
@@ -166,7 +194,7 @@ DataRegisterPlan::DataRegisterPlan(const Netlist& netlist) {
             "data-register dependency resource limit exceeded");
       }
       if (ref.node == std::numeric_limits<size_t>::max() ||
-          !visited.insert(ref.node).second) {
+          !visited.emplace(ref.node, ref.index).second) {
         continue;
       }
       const auto& source = netlist.nodes.at(ref.node);
@@ -179,25 +207,18 @@ DataRegisterPlan::DataRegisterPlan(const Netlist& netlist) {
           !source.inputs.count("Source")) {
         primary_inputs[id].insert(ref.node);
       }
-      for (const auto& [name, bits] : source.inputs) {
-        pending.insert(pending.end(), bits.begin(), bits.end());
-      }
-      for (const auto& choice : source.choices) {
-        pending.insert(pending.end(), choice.source.begin(),
-                       choice.source.end());
-      }
-      for (const auto& contributor : source.one_hot_sources) {
-        pending.insert(pending.end(), contributor.bits.begin(),
-                       contributor.bits.end());
-        for (const auto& condition : one_hot.Resolve(contributor)) {
-          implicit_control(condition.enable);
-          if (condition.signals) {
-            for (const auto& bit : *condition.signals) implicit_control(bit);
+      // Shared controls are expanded once per node, independent of word width.
+      const bool controls = expanded_controls.insert(ref.node).second;
+      AppendDependencySources(source, ref.index, controls, &pending);
+      if (controls) {
+        for (const auto& contributor : source.one_hot_sources) {
+          for (const auto& condition : one_hot.Resolve(contributor)) {
+            implicit_control(condition.enable);
+            if (condition.signals) {
+              for (const auto& bit : *condition.signals) implicit_control(bit);
+            }
           }
         }
-      }
-      for (const auto& term : source.logic) {
-        pending.insert(pending.end(), term.signals.begin(), term.signals.end());
       }
     }
     for (size_t source : sources) consumers[source].push_back(id);
@@ -257,11 +278,13 @@ DataRegisterPlan::DataRegisterPlan(const Netlist& netlist) {
     order.insert(order.end(), members.begin(), members.end());
   }
   std::map<size_t, std::set<BitKey>> reset_seen;
+  std::map<size_t, std::set<size_t>> reset_consumers;
   for (size_t target = 0; target < netlist.nodes.size(); ++target) {
     const auto& node = netlist.nodes[target];
     if (!node.reset) continue;
     std::vector<BitReference> pending{*node.reset};
-    std::set<size_t> visited;
+    std::set<std::pair<size_t, int64_t>> visited;
+    std::set<size_t> expanded_controls;
     while (!pending.empty()) {
       const auto ref = pending.back();
       pending.pop_back();
@@ -270,11 +293,12 @@ DataRegisterPlan::DataRegisterPlan(const Netlist& netlist) {
             "data-register reset dependency resource limit exceeded");
       }
       if (ref.node == std::numeric_limits<size_t>::max() ||
-          !visited.insert(ref.node).second) {
+          !visited.emplace(ref.node, ref.index).second) {
         continue;
       }
       const auto& source = netlist.nodes.at(ref.node);
       if (source.model == ModelKind::kRegister) {
+        reset_consumers[ref.node].insert(target);
         const auto found = membership.find(ref.node);
         if (found != membership.end() && groups[found->second].feedback &&
             (!membership.count(target) ||
@@ -289,21 +313,121 @@ DataRegisterPlan::DataRegisterPlan(const Netlist& netlist) {
         }
         continue;
       }
-      for (const auto& [name, bits] : source.inputs) {
-        pending.insert(pending.end(), bits.begin(), bits.end());
-      }
-      for (const auto& choice : source.choices) {
-        pending.insert(pending.end(), choice.source.begin(),
-                       choice.source.end());
-      }
-      for (const auto& contributor : source.one_hot_sources) {
-        pending.insert(pending.end(), contributor.bits.begin(),
-                       contributor.bits.end());
-      }
-      for (const auto& term : source.logic) {
-        pending.insert(pending.end(), term.signals.begin(), term.signals.end());
+      const bool controls = expanded_controls.insert(ref.node).second;
+      AppendDependencySources(source, ref.index, controls, &pending);
+      if (controls) {
+        for (const auto& contributor : source.one_hot_sources) {
+          for (const auto& condition : one_hot.Resolve(contributor)) {
+            pending.push_back(condition.enable);
+            if (condition.signals) {
+              pending.insert(pending.end(), condition.signals->begin(),
+                             condition.signals->end());
+            }
+          }
+        }
       }
     }
+  }
+  const std::set<std::string> ordinary_ports{
+      "DataInPort", "DataOutPort", "ScanInPort", "ScanOutPort",
+      "ResetPort",  "AddressPort", "ReadEnPort", "WriteEnPort"};
+  if (!netlist.taps.empty()) return;
+  for (const auto& node : netlist.nodes) {
+    if (node.model == ModelKind::kInterface ||
+        node.model == ModelKind::kAccessLink ||
+        (node.model == ModelKind::kPort && !ordinary_ports.count(node.kind))) {
+      return;
+    }
+  }
+  // Saturate at two origins: ambiguity cannot become unique downstream.
+  std::map<size_t, std::set<size_t>> owners;
+  std::deque<size_t> pending;
+  for (const auto& [id, group] : membership) {
+    owners[id].insert(group);
+    pending.push_back(id);
+  }
+  while (!pending.empty()) {
+    const auto id = pending.front();
+    pending.pop_front();
+    const auto edges = reset_consumers.find(id);
+    if (edges == reset_consumers.end()) continue;
+    for (size_t target : edges->second) {
+      auto& origins = owners[target];
+      const auto previous = origins.size();
+      for (size_t origin : owners.at(id)) {
+        if (origins.size() == 2) break;
+        origins.insert(origin);
+      }
+      if (origins.size() != previous) pending.push_back(target);
+    }
+  }
+  std::set<size_t> data_consumers;
+  for (const auto& [id, sources] : scan_inputs) {
+    data_consumers.insert(sources.begin(), sources.end());
+  }
+  for (size_t index = 0; index < groups.size(); ++index) {
+    auto& group = groups[index];
+    if (!group.feedback) continue;
+    std::set<size_t> targets;
+    std::vector<size_t> todo = group.nodes;
+    bool qualified = true;
+    while (!todo.empty() && qualified) {
+      const auto id = todo.back();
+      todo.pop_back();
+      const auto edges = reset_consumers.find(id);
+      if (edges == reset_consumers.end()) continue;
+      for (size_t target : edges->second) {
+        if (membership.count(target) && membership.at(target) == index) {
+          continue;
+        }
+        if (owners.at(target).size() != 1 ||
+            *owners.at(target).begin() != index ||
+            netlist.nodes[target].kind != "ScanRegister" ||
+            data_consumers.count(target)) {
+          qualified = false;
+          break;
+        }
+        if (targets.insert(target).second) todo.push_back(target);
+      }
+    }
+    if (!qualified || targets.empty()) continue;
+    std::map<size_t, size_t> waiting;
+    for (size_t id : targets) waiting[id] = 0;
+    for (size_t id : targets) {
+      const auto edges = reset_consumers.find(id);
+      if (edges == reset_consumers.end()) continue;
+      for (size_t target : edges->second) {
+        if (targets.count(target)) ++waiting.at(target);
+      }
+    }
+    std::vector<size_t> ready;
+    for (const auto& [id, count] : waiting) {
+      if (!count) ready.push_back(id);
+    }
+    size_t visited = 0;
+    while (!ready.empty()) {
+      const auto id = ready.back();
+      ready.pop_back();
+      ++visited;
+      const auto edges = reset_consumers.find(id);
+      if (edges == reset_consumers.end()) continue;
+      for (size_t target : edges->second) {
+        if (targets.count(target) && !--waiting.at(target)) {
+          ready.push_back(target);
+        }
+      }
+    }
+    if (visited != targets.size()) continue;
+    group.reset_targets.assign(targets.begin(), targets.end());
+    for (size_t id : targets) {
+      const auto edges = reset_consumers.find(id);
+      if (edges == reset_consumers.end()) continue;
+      for (size_t target : edges->second) {
+        if (targets.count(target)) group.reset_consumers[id].push_back(target);
+      }
+    }
+    group.external_resets.clear();
+    feedback_reset_targets.insert(targets.begin(), targets.end());
   }
 }
 const std::vector<AddressRequirement>& OneHotReadResolver::Resolve(

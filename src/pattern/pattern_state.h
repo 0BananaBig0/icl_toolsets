@@ -19,6 +19,7 @@ struct ScanControl {
 };
 class SignalEvaluator;
 struct DataRegisterPlan;
+struct DataRegisterGroup;
 // State points accepted by iState, including observation history.
 void ValidateStateTarget(const Netlist& netlist, size_t node);
 // Hardware assumptions exclude controller-owned instruction storage.
@@ -68,6 +69,8 @@ class NetworkState {
   void ClockRegisters(const std::map<size_t, ScanControl>& controls,
                       bool rising);
   void UpdateDataRegisters(char event, const Check& check);
+  void ResetFeedback(const DataRegisterGroup& group, size_t* remaining,
+                     const Check& check);
   mutable std::shared_ptr<const DataRegisterPlan> data_registers_;
   bool has_data_registers_ = false;
   const Netlist& netlist_;

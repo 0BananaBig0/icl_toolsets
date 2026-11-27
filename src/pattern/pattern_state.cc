@@ -453,6 +453,8 @@ void NetworkState::UpdateDataRegisters(char event, const Check& check) {
       for (size_t i = 0; i < group.nodes.size(); ++i) {
         update_[group.nodes[i]] = std::move(next[i]);
       }
+      if (check && !stable) check(*this);
+      ResetFeedback(group, &remaining, check);
       if (stable) break;
       SignalEvaluator after(*this);
       for (size_t i = 0; i < group.external_resets.size(); ++i) {
@@ -461,7 +463,6 @@ void NetworkState::UpdateDataRegisters(char event, const Check& check) {
               "feedback reset event is not supported during data settling");
         }
       }
-      if (check) check(*this);
     }
     if (!stable) {
       throw std::runtime_error(
@@ -591,6 +592,40 @@ void NetworkState::ClockRegisters(const std::map<size_t, ScanControl>& controls,
   }
   Reset();
 }
+void NetworkState::ResetFeedback(const DataRegisterGroup& group,
+                                 size_t* remaining, const Check& check) {
+  std::set<size_t> pending(group.reset_targets.begin(),
+                           group.reset_targets.end());
+  while (!pending.empty()) {
+    SignalEvaluator values(*this);
+    std::map<size_t, std::string> next;
+    for (size_t id : pending) {
+      const auto& node = netlist_.nodes[id];
+      if (node.Width() > *remaining) {
+        throw std::runtime_error("data-register feedback reset bit-work limit");
+      }
+      *remaining -= node.Width();
+      const char reset = values.Read(*node.reset);
+      if (reset == '1') {
+        reset_events_.insert(id);
+        control_events_[id] = std::nullopt;
+      }
+      auto value =
+          Choose(reset, node.constants.at("ResetValue").data, update_[id]);
+      if (value != update_[id]) next.emplace(id, std::move(value));
+    }
+    pending.clear();
+    for (auto& [id, value] : next) {
+      update_[id] = std::move(value);
+      const auto consumers = group.reset_consumers.find(id);
+      if (consumers != group.reset_consumers.end()) {
+        pending.insert(consumers->second.begin(), consumers->second.end());
+      }
+    }
+    if (check && !next.empty()) check(*this);
+  }
+}
+
 void NetworkState::Reset() {
   // Reset controls may themselves be register outputs. Propagate to a fixed
   // point without inventing a reset or prioritizing a source by traversal

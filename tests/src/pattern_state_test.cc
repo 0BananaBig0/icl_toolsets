@@ -9,6 +9,7 @@
 #include <sstream>
 #include <stdexcept>
 
+#include "pattern/pattern_data.h"
 #include "pattern/pattern_design.h"
 #include "pattern/pattern_flatten.h"
 #include "pattern/pattern_tap_execution.h"
@@ -776,20 +777,267 @@ Module Top {
   state.Assume(mask, "1");
   state.Drive(netlist.node_ids.at("global"), "0");
   const pattern::NetworkState before(state);
-  bool rejected = false;
-  try {
-    state.ApplyInputs({{enable, "1"}});
-  } catch (const std::runtime_error& error) {
-    rejected = std::string(error.what()).find("feedback reset event") !=
-               std::string::npos;
-  }
-  Require(
-      rejected && state.SameState(before),
-      "an external reset pulse during feedback must not silently disappear");
+  state.ApplyInputs({{enable, "1"}});
+  Require(state.Value(value) == "00" && state.Value(victim) == "0",
+          "a transient feedback reset remains in victim storage");
+  Require(state.TakeResetEvents().count(victim) &&
+              !state.TakeControlEvents().at(victim).has_value(),
+          "a pulse records a definite reset even after deassertion");
+  state.Restore(before);
   state.ApplyInputs({{enable, "1"}, {mask, "0"}});
   Require(state.Value(value) == "00" && state.Value(victim) == "1",
-          "a masked external reset permits feedback settling and preserves "
-          "storage");
+          "a masked external reset preserves storage");
+  state.Restore(before);
+  bool rejected = false;
+  try {
+    state.ApplyInputs({{enable, "1"}}, [&](const auto& snapshot) {
+      if (snapshot.Value(victim) != "1") {
+        throw std::runtime_error("held victim");
+      }
+    });
+  } catch (const std::runtime_error&) {
+    rejected = true;
+  }
+  Require(rejected && state.SameState(before),
+          "failed pulse preservation rolls back storage and histories");
+  pattern::NetworkState copy(state);
+  copy.ApplyInputs({{enable, "1"}});
+  Require(state.SameState(before) && copy.Value(victim) == "0",
+          "copied states share dependencies without sharing reset events");
+  state.Assume(mask, "x");
+  state.ApplyInputs({{enable, "1"}});
+  Require(state.Value(victim) == "x" && !state.TakeResetEvents().count(victim),
+          "an unknown pulse joins reset storage without a definite event");
+}
+
+void TestFeedbackResetWaves() {
+  // Resetting a and b together never exposes their XOR; c follows a a wave
+  // later.
+  for (bool scan : {false, true}) {
+    pattern::Design design;
+    design.AddIcl("feedback-waves.icl",
+                  R"(Module Sink {
+ ScanInPort si; ResetPort rst;
+ ScanRegister r {ScanInSource si; ResetValue 0;}
+ DataOutPort q {Source r;}
+ ScanOutPort so {Source r;}
+}
+Module Top {ScanInPort si; ResetPort global; DataInPort enable;
+ ScanRegister bus {ScanInSource si;}
+ DataRegister v[1:0] {WriteDataSource 1'b0,v[1]; WriteEnSource )" +
+                      std::string(scan ? "bus" : "enable") + R"(;}
+ LogicSignal pulse {v[0] ^ v[1];}
+ DataMux gate SelectedBy pulse {1'b0:global; 1'b1:1'b1;}
+ LogicSignal cascade_pulse {~a.q;}
+ DataMux cascade_gate SelectedBy cascade_pulse {1'b0:global; 1'b1:1'b1;}
+ Instance a Of Sink {InputPort si=bus; InputPort rst=gate;}
+ Instance b Of Sink {InputPort si=a.so; InputPort rst=gate;}
+ Instance c Of Sink {InputPort si=b.so; InputPort rst=cascade_gate;}
+ LogicSignal parallel {a.q ^ b.q;}
+ LogicSignal cascade {a.q ^ c.q;}
+ ScanOutPort so {Source c.so;}
+})");
+    const auto netlist = pattern::Elaborate(design, "Top");
+    const auto id = [&](const std::string& name) {
+      return netlist.node_ids.at(name);
+    };
+    pattern::NetworkState state(netlist);
+    state.Drive(id("global"), "0");
+    state.Assume(id("v"), "11");
+    state.Assume(id("enable"), "0");
+    state.Assume(id("bus"), "0");
+    if (scan) {
+      state.ShiftComplete({{id("bus"), "1"}},
+                          {{id("bus"), {'0', '1', '0', '1'}}});
+    }
+    for (const auto name : {"a.r", "b.r", "c.r"}) state.Assume(id(name), "1");
+    const auto& plan = state.DataRegisters();
+    Require(plan.feedback_reset_targets ==
+                std::set<size_t>{id("a.r"), id("b.r"), id("c.r")},
+            "reset closure includes each physical cascaded sink");
+    const pattern::NetworkState before(state);
+    bool rejected = false;
+    const auto apply = [&](const pattern::NetworkState::Check& check) {
+      if (scan) {
+        state.Clock({{id("bus"), {'0', '0', '1', '1'}}}, false, check);
+      } else {
+        state.ApplyInputs({{id("enable"), "1"}}, check);
+      }
+    };
+    try {
+      apply([&](const auto& current) {
+        if (current.Value(id("cascade")) != "0") {
+          throw std::runtime_error("cascade held");
+        }
+      });
+    } catch (const std::runtime_error&) {
+      rejected = true;
+    }
+    Require(rejected && state.SameState(before),
+            "cascade intermediate checks roll back every event");
+    apply([&](const auto& current) {
+      Require(current.Value(id("parallel")) == "0",
+              "parallel resets publish simultaneously");
+    });
+    Require(state.Value(id("v")) == "00" && state.Value(id("a.r")) == "0" &&
+                state.Value(id("b.r")) == "0" && state.Value(id("c.r")) == "0",
+            "both primary and falling scan updates settle reset cascades");
+  }
+}
+
+void TestFeedbackResetGuards() {
+  for (const std::string extra :
+       {"TCKPort clock;",
+        "DataRegister consumer {WriteDataSource a.q; WriteEnSource 1'b0;}",
+        "DataRegister w {WriteDataSource w; WriteEnSource 1'b0;}"}) {
+    pattern::Design design;
+    const bool shared = extra.find(" w ") != std::string::npos;
+    design.AddIcl("feedback-guard.icl", R"(Module Sink {
+ ScanInPort si; ResetPort rst; ScanRegister r {ScanInSource si; ResetValue 0;}
+ DataOutPort q {Source r;} ScanOutPort so {Source r;}}
+Module Top {ScanInPort si; ResetPort global; DataInPort enable;
+ DataRegister v[1:0] {WriteDataSource 1'b0,v[1]; WriteEnSource enable;}
+ LogicSignal pulse {v[0]^v[1])" + std::string(shared ? "|w" : "") +
+                                            R"(;}
+ DataMux gate SelectedBy pulse {1'b0:global; 1'b1:1'b1;}
+ Instance a Of Sink {InputPort si=si; InputPort rst=gate;}
+ ScanOutPort so {Source a.so;}
+)" + extra + "}");
+    const auto netlist = pattern::Elaborate(design, "Top");
+    pattern::NetworkState state(netlist);
+    Require(state.DataRegisters().feedback_reset_targets.empty(),
+            "shared origins, writable data consumers and clock contexts retain "
+            "guards");
+    state.Drive(netlist.node_ids.at("global"), "0");
+    state.Assume(netlist.node_ids.at("v"), "11");
+    state.Assume(netlist.node_ids.at("a.r"), "1");
+    state.Assume(netlist.node_ids.at("enable"), "0");
+    if (shared) state.Assume(netlist.node_ids.at("w"), "0");
+    const pattern::NetworkState before(state);
+    bool rejected = false;
+    try {
+      state.ApplyInputs({{netlist.node_ids.at("enable"), "1"}});
+    } catch (const std::runtime_error& error) {
+      rejected = std::string(error.what()).find("feedback reset event") !=
+                 std::string::npos;
+    }
+    Require(rejected && state.SameState(before),
+            "unqualified pulses reject atomically");
+  }
+}
+
+void TestFeedbackResetDependencyEdges() {
+  pattern::Design design;
+  design.AddIcl("feedback-reset-one-hot.icl", R"(Module Driver {
+ DataInPort gate; DataInPort data; DataOutPort q {Source data; Enable gate;}}
+Module Bank {DataInPort selector;
+ Instance a Of Driver {InputPort gate=~selector; InputPort data=1'b0;}
+ Instance b Of Driver {InputPort gate=selector; InputPort data=1'b1;}
+ OneHotDataGroup group {Port a.q; Port b.q;}
+ DataOutPort out {Source group;}}
+Module Sink {ScanInPort si; ResetPort rst;
+ ScanRegister r {ScanInSource si; ResetValue 0;}
+ ScanOutPort so {Source r;} DataOutPort q {Source r;}}
+Module Top {ScanInPort si; ResetPort global; DataInPort enable;
+ DataRegister v[1:0] {WriteDataSource 1'b0,v[1]; WriteEnSource enable;}
+ DataRegister w {WriteDataSource w; WriteEnSource 1'b0;}
+ Instance bank Of Bank {InputPort selector=w;}
+ LogicSignal pulse {(v[0]^v[1]) & bank.out;}
+ DataMux gate SelectedBy pulse {1'b0:global; 1'b1:1'b1;}
+ Instance a Of Sink {InputPort si=si; InputPort rst=gate;}
+ ScanOutPort so {Source a.so;}}
+)");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::NetworkState state(netlist);
+  Require(state.DataRegisters().feedback_reset_targets.empty(),
+          "OneHot read-enable ownership prevents shared reset qualification");
+  const auto& plan = state.DataRegisters();
+  bool found = false;
+  for (const auto& group : plan.groups) {
+    if (group.nodes == std::vector<size_t>{netlist.node_ids.at("w")}) {
+      found = !group.external_resets.empty();
+    }
+  }
+  Require(found, "OneHot read enable retains its changing-reset guard");
+  // A scan-only reset cycle must not acquire the acyclic wave contract.
+  pattern::Design cyclic;
+  cyclic.AddIcl("feedback-reset-cycle.icl", R"(Module Sink {
+ ScanInPort si; ResetPort rst; ScanRegister r {ScanInSource si; ResetValue 0;}
+ DataOutPort q {Source r;} ScanOutPort so {Source r;}}
+Module Top {ScanInPort si; ResetPort global; DataInPort enable;
+ DataRegister v[1:0] {WriteDataSource 1'b0,v[1]; WriteEnSource enable;}
+ LogicSignal pulse {(v[0]^v[1]) | b.q;}
+ DataMux ga SelectedBy pulse {1'b0:global; 1'b1:1'b1;}
+ DataMux gb SelectedBy a.q {1'b0:global; 1'b1:1'b1;}
+ Instance a Of Sink {InputPort si=si; InputPort rst=ga;}
+ Instance b Of Sink {InputPort si=a.so; InputPort rst=gb;}
+ ScanOutPort so {Source b.so;}}
+)");
+  const auto loop = pattern::Elaborate(cyclic, "Top");
+  Require(pattern::DataRegisterPlan(loop).feedback_reset_targets.empty(),
+          "scan reset cycles retain the existing guarded behavior");
+  for (const std::string path : {"alias", "forward", "mux", "unused-consumer",
+                                 "mux-control", "alias-shared"}) {
+    std::string source = R"(Module Sink {ScanInPort si; ResetPort rst;
+ ScanRegister r {ScanInSource si; ResetValue 0;}
+ ScanOutPort so {Source r;} DataOutPort q {Source r;}}
+Module Top {ScanInPort si; ResetPort global; DataInPort enable;
+ DataRegister v[1:0] {WriteDataSource 1'b0,v[1]; WriteEnSource enable;}
+ DataRegister w {WriteDataSource w; WriteEnSource 1'b0;}
+ LogicSignal pulse {v[0]^v[1];}
+ DataMux gate SelectedBy pulse {1'b0:global; 1'b1:1'b1;}
+ Instance a Of Sink {InputPort si=si; InputPort rst=gate;}
+ ScanOutPort so {Source a.so;}})";
+    std::string definitions = "Alias packed[2:0] = v,w; ";
+    std::string expression = "packed[2]^packed[1]";
+    if (path == "alias-shared") {
+      expression = "packed[2]^packed[0]";
+    } else if (path == "forward") {
+      source =
+          "Module Forward {DataInPort packed[2:0]; DataOutPort out[2:0] "
+          "{Source packed;}}\n" +
+          source;
+      definitions += "Instance f Of Forward {InputPort packed=packed;} ";
+      expression = "f.out[2]^f.out[1]";
+    } else if (path == "mux" || path == "mux-control") {
+      definitions = "DataInPort pick; DataMux packed[2:0] SelectedBy " +
+                    std::string(path == "mux" ? "pick" : "w") +
+                    " {1'b0:v,w; 1'b1:v,w;} ";
+    } else if (path == "unused-consumer") {
+      definitions =
+          "LogicSignal zero {1'b0;} Alias packed[1:0] = a.q,zero; "
+          "DataRegister unused {WriteDataSource packed[0]; "
+          "WriteEnSource 1'b0;} ";
+      expression = "v[0]^v[1]";
+    }
+    source.replace(source.find("v[0]^v[1]"), 9, expression);
+    source.insert(source.find("LogicSignal pulse"), definitions);
+    pattern::Design selected;
+    selected.AddIcl("selected-reset-dependencies.icl", source);
+    const auto graph = pattern::Elaborate(selected, "Top");
+    pattern::NetworkState state(graph);
+    const auto& plan = state.DataRegisters();
+    if (path == "mux-control" || path == "alias-shared") {
+      Require(plan.feedback_reset_targets.empty(),
+              "selected data bits retain shared owners and real selectors");
+      continue;
+    }
+    Require(plan.feedback_reset_targets ==
+                std::set<size_t>{graph.node_ids.at("a.r")},
+            "unused alias, forwarded and mux data bits create no reset owner "
+            "or writable consumer");
+    state.Drive(graph.node_ids.at("global"), "0");
+    state.Assume(graph.node_ids.at("enable"), "0");
+    state.Assume(graph.node_ids.at("v"), "11");
+    state.Assume(graph.node_ids.at("w"), "0");
+    state.Assume(graph.node_ids.at("a.r"), "1");
+    if (graph.node_ids.count("pick")) {
+      state.Assume(graph.node_ids.at("pick"), "0");
+    }
+    state.ApplyInputs({{graph.node_ids.at("enable"), "1"}});
+    Require(state.Value(graph.node_ids.at("a.r")) == "0",
+            "selected-bit reset dependencies preserve the actual pulse");
+  }
 }
 
 void TestPinSnapshot() {
@@ -1526,6 +1774,9 @@ int main() {
     TestDataFeedbackClockAndRollback();
     TestOneHotSelectionFeedback();
     TestFeedbackResetPulse();
+    TestFeedbackResetWaves();
+    TestFeedbackResetGuards();
+    TestFeedbackResetDependencyEdges();
     TestFeedbackTentativeChecks();
     TestAddressedDataEvents();
     TestAmbiguousDataAddress();

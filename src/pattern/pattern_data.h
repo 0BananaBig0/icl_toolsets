@@ -17,6 +17,8 @@ struct DataRegisterGroup {
   std::vector<size_t> nodes;
   bool feedback = false;
   std::vector<BitReference> external_resets{};
+  std::vector<size_t> reset_targets{};
+  std::map<size_t, std::vector<size_t>> reset_consumers{};
 };
 // Immutable event dependencies shared by concrete replay and symbolic planning.
 // A null address signal list denotes an ordinary selectable register.
@@ -26,6 +28,7 @@ struct DataRegisterPlan {
   std::vector<size_t> order;
   std::vector<DataRegisterGroup> groups;
   std::vector<BitReference> implicit_controls;
+  std::set<size_t> feedback_reset_targets;
   std::map<size_t, std::set<size_t>> primary_inputs, scan_inputs;
 };
 struct DataReadGuard {

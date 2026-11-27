@@ -11749,3 +11749,88 @@ worktree is detached and all 117 stashes are preserved. The broader
 inventory and 44 deferred Minors remain open; item1 stays excluded.
 Evidence:
 build/clock-program-components-20261127/ (pre-review/ retains the earlier bundle).
+
+
+### Feedback-generated scan reset pulses (Task198)
+
+A bounded DataRegister feedback update can briefly assert a reset even when its
+initial and final reset levels are inactive. Qualified interface-free models now
+retain that event in affected ScanRegister storage. For example, the feedback
+word `11 → 01 → 00` produces a pulse from `value[0] ^ value[1]`; a connected
+ScanRegister with ResetValue 0 remains zero after the pulse ends. Masking that
+pulse preserves the prior scan value.
+
+This applies to uniquely owned, acyclic scan-reset closures with no scan sink
+feeding a writable DataRegister's data, enable, address or reset. Parallel sinks
+publish together; cascades settle in successive snapshots. Held-value checks
+observe those intermediate snapshots. Unknown assertions join possible storage
+values without inventing a definite reset or controlling write. A failed apply
+retains the prior state and histories. Scan capture still precedes feedback
+updates; empty and read-only primary frames create no update event.
+
+Ownership follows selected physical bits through aliases, forwarding ports and
+mux data paths, with their real enable, address and selector dependencies.
+Preparation preserves storage until a pending observation has captured it, and
+both scheduling routes enforce the existing retention of unrelated data.
+
+Each emitted apply must represent its scan end states, including known defaults
+not established by an unknown value. Unrepresentable pending-read/default
+combinations fail atomically; already-established defaults replay without extra
+events. Native `ScanScheduler::ReplayPrimary` accepts these qualified primary
+frames and preserves actual observations, storage and controlling fill while
+checking observation routes and intermediate end states.
+
+Use ordinary DataMux reset connections with a reset control path, including
+inverted connections for active-low reset ports. Source, associated-flat and
+generated programs use the same dependency identities and reset semantics.
+Modeled readback observes the resulting storage independently of expected data.
+Reset pulses also update controlling fill for later X writes using known
+ScanRegister ResetValue bits.
+
+Primary pin writes and DataOutPort reads can use a primary-only schedule when
+every scan register is an independent qualified reset sink. They try the primary
+planner, retaining mixed planning when a scan preparation or end goal requires
+it; scan-driven updates use the mixed planner. A request that requires primary and
+scan writes in the same `iApply -together` event remains outside the existing
+mixed-frame contract.
+
+Shared data origins, scan-reset cycles, writable-data consumers, TAPs, explicit
+scan/clock controls and ScanInterfaces retain their previous changing-reset
+guards. Masked/invariant cases retain the existing preservation and end-state
+contracts. The 32-delta,
+4M feedback-bit work and existing dependency/solver bounds remain unchanged;
+a resource-limit diagnostic is not a successful schedule. This is a logical
+model, with no claim about physical pulse width, event timing or transport.
+
+The retained three-round matrix covers 16/128 independent groups, 2/8-bit
+feedback words and 1/4 cascaded sinks, with source, associated-flat, generated,
+flat-generated and reset-only replay. All 240 candidate/current-control forms
+pass their 10-second/512-MiB limits; the largest measured wall time is 2.825 seconds
+and peak RSS is 184220 KiB. Six of 24 parent controls finish all five forms with
+identical output; 18 retain measured parent budget limits, so no complete parent
+comparison or speedup ratio is claimed for those coordinates. The original
+128×8×4 reproduction without an explicit mask write also passes unchanged at
+2.613 seconds/200140 KiB. These are bounded measurements on the recorded Linux
+environment with g++ 16.2.1 `-O2` and Z3 4.13.3, not general performance guarantees.
+
+Run the matrix with a fresh output directory:
+
+```sh
+python3 tests/src/pattern/benchmark_feedback_reset_pulses.py \
+  build/icl-pattern-generation \
+  build/feedback-reset-pulses-20261127/parent-products/icl-pattern-generation \
+  /tmp/icl-feedback-reset-measurements
+```
+
+Artifacts, exact commands, input/product hashes and actual modeled notes are
+under `build/feedback-reset-pulses-20261127/benchmark-final/`; the unchanged
+original reproduction is under its `probes/widest/` sibling.
+
+One independent review found one Critical and four Important issues, all fixed
+in one test-first repair pass; no new Minors were added. Final qualification
+passes 35 commands, including 227 Python suites reporting 3532 tests, 21
+leak-enabled sanitizer checks, 24 C++ quality checks, corpus/editor and source
+packaging. Exact hashes bind 4126 inputs and 44 executables. Five optional
+reference tests were skipped in this full run; no new vendor or live-device
+qualification is claimed. The broader inventory and 44 inherited Minors remain
+open, with item1 excluded.
