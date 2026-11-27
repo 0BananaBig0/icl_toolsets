@@ -2585,3 +2585,34 @@ qualified source archive, review, ledger and helper copies remain under
 `build/callback-postconditions-20261128/`. The reusable detached worktree and
 sibling ledgers remain available. Broader inventory and excluded coverage item1
 remain open.
+
+
+## Task208 physical input replay work
+
+Ordinary replay now assembles each physical scan input bit once per tick,
+using the existing longest-lane representative after suffix validation and
+padding. The redundant second input-stream map is removed. Per-output
+sampling, node-vector copies, controls, reset timing and TAP assembly retain
+their existing behavior. The maintained scale fixture is shared with a
+separate compiled work probe; production has no measurement hooks.
+
+All nine old-code coordinates fail the assignment-work bound with correct
+complete PDL. The loop-only change passes before the map removal; the final
+source passes again with identical parent PDL. At 32 observations and
+256-bit width, executed assignments fall from 32768 to 1024. This is logical
+assignment work, not a CPU instruction count or end-to-end speedup claim.
+Three equivalent uninstrumented scale repeats on each revision stay within
+the existing 10-second four-form bound; all source probes stay below 512MiB.
+
+Before packaging, fresh whole-project qualification reports 228 Python suites
+and 3568 tests, including normal/static generators and normal native suites.
+All 15 default leak-enabled native suites, nine affected leak-enabled CLI
+modules, instrumented corpus, focused normal/static fanout/shared-input/output
+checks and three C++ quality checks pass. Source build/install and final
+identities follow in the receipt: 4135 inputs, one added benchmark and two
+modified existing files, with 4132 unchanged; 48 qualified products.
+
+One inherited replay-work finding is a candidate closure; 27 findings remain
+pending independent review and integration. Evidence:
+`build/fanout-replay-inputs-20261128/`. Broader inventory and excluded coverage
+item1 remain open.

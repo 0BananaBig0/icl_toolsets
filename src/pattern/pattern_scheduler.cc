@@ -8796,14 +8796,6 @@ class ScanScheduler::Impl {
         step.lanes.push_back(lane);
       }
     }
-    std::map<Key, std::string> input_streams;
-    for (const auto& [input, lane] : lanes) {
-      const auto [found, inserted] =
-          input_streams.emplace(Key{input.node, input.index}, lane.serial);
-      if (!inserted && found->second != lane.serial) {
-        throw std::runtime_error("conflicting scan streams on shared input");
-      }
-    }
     std::function<void(size_t, const NetworkState&)> sample;
     if (!read_lanes.empty()) {
       sample = [&](size_t tick, const NetworkState& current) {
@@ -8851,11 +8843,12 @@ class ScanScheduler::Impl {
       for (auto& [id, control] : controls) control = {'0', '1', '0', '1'};
       for (size_t tick = 0; tick < clocks; ++tick) {
         std::map<size_t, std::string> inputs;
-        for (const auto& [input, lane] : lanes) {
-          auto [entry, inserted] = inputs.try_emplace(input.node);
-          if (inserted) entry->second = replay->Value(input.node);
-          entry->second.at(Offset(netlist_.nodes.at(input.node), input.index)) =
-              lane.serial[tick];
+        for (const auto& [input, index] : longest_lanes) {
+          auto [entry, inserted] = inputs.try_emplace(input.first);
+          if (inserted) entry->second = replay->Value(input.first);
+          entry->second.at(
+              Offset(netlist_.nodes.at(input.first), input.second)) =
+              lanes[index].second.serial[tick];
         }
         for (const auto& [input, bits] : inputs) replay->Drive(input, bits);
         if (client_controls_) {
