@@ -19,6 +19,8 @@ qualified manifests. Original correction receipts are unnecessary because this
 run omits their writes. Original and derived driver hashes remain distinct.
 The active script is created under `tests/`; its retained copy, log and receipts
 go into a new `/tmp/icl-clock-replay-*` directory.
+The active script is removed if writing, copying or waiting raises; available
+scratch files remain for diagnosis.
 
 ```sh
 cd /home/banana/cpp_workspace/icl-format
@@ -66,14 +68,16 @@ derived += '\nprint("ISOLATED_CLOCK_EVIDENCE_REPLAY_VERIFIED", flush=True)\n'
 fd, filename = tempfile.mkstemp(prefix='.clock-evidence-replay-', suffix='.py',
                                 dir=repo / 'tests')
 driver = Path(filename)
-with os.fdopen(fd, 'w', encoding='utf-8') as stream:
-    stream.write(derived)
-shutil.copy2(driver, scratch / 'driver.py')
-print(f'Scratch: {scratch}', flush=True)
-args = [sys.executable, str(driver)]
-with (scratch / 'run.log').open('w') as log:
-    completed = subprocess.run(args, cwd=repo, stdout=log, stderr=subprocess.STDOUT)
-driver.unlink()
+try:
+    with os.fdopen(fd, 'w', encoding='utf-8') as stream:
+        stream.write(derived)
+    shutil.copy2(driver, scratch / 'driver.py')
+    print(f'Scratch: {scratch}', flush=True)
+    args = [sys.executable, str(driver)]
+    with (scratch / 'run.log').open('w') as log:
+        completed = subprocess.run(args, cwd=repo, stdout=log, stderr=subprocess.STDOUT)
+finally:
+    driver.unlink()
 assert completed.returncode == 0, (scratch / 'run.log').read_text()[-4000:]
 assert all(sha(Path(name)) == digest for name, digest in protected.items())
 measured = json.loads((receipts / 'measure/receipt.json').read_text())
