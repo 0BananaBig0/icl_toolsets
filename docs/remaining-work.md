@@ -2760,3 +2760,18 @@ retired; guide, probes, raw replay, source archive, review and ledger remain
 under `build/clock-replay-cleanup-20261128/`. The reusable detached worktree and
 sibling ledgers remain available. Broader inventory and excluded coverage item1
 remain open.
+
+## Task212 clock replay scratch location
+
+The replay guide now prints the allocated scratch path immediately, before
+receipt or driver setup. The actual wrapper reproduces the old copy failure's
+missing path (one failure in two methods), then passes both copy/wait methods
+with the exact location visible, original exceptions preserved and active
+scripts removed. Both optimization preflight checks pass. Apart from the moved
+print, guide bytes and native work are identical to Task211. Qualification checks
+4135 inputs,48 products and2617 canonical files and packages the four changed
+documents. Task211's270 native/16 parser replay and source build/install remain
+retained evidence for unchanged work; they are not rerun here. One inherited
+finding is a candidate closure:26 minus1 =25 pending review/integration. Evidence:
+`build/clock-replay-scratch-path-20261128/`. Broader inventory and excluded
+coverage item1 remain open.

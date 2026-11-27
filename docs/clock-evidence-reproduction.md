@@ -55,6 +55,7 @@ for name in ('receipt.json', 'receipt-erratum.json'):
     p = repo / 'build/clock-period-serialization-20261127/qualification' / name
     protected[str(p)] = sha(p)
 scratch = Path(tempfile.mkdtemp(prefix='icl-clock-replay-'))
+print(f'Scratch: {scratch}', flush=True)
 receipts = scratch / 'receipts'
 receipts.mkdir()
 for name in ('parent-qualified-inputs.json', 'parent-qualified-products.json'):
@@ -72,7 +73,6 @@ try:
     with os.fdopen(fd, 'w', encoding='utf-8') as stream:
         stream.write(derived)
     shutil.copy2(driver, scratch / 'driver.py')
-    print(f'Scratch: {scratch}', flush=True)
     args = [sys.executable, str(driver)]
     with (scratch / 'run.log').open('w') as log:
         completed = subprocess.run(args, cwd=repo, stdout=log, stderr=subprocess.STDOUT)
