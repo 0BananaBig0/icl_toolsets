@@ -36,12 +36,17 @@ owned build/literal-history-oracles-20261128 evidence.
   Old tests accept zero-default and eager-order controls: outer2failures,0errors.
 - [x] Add unoverridden160-bit parameter default with literal flattened payload;
   canonicalize SI6. Both meta-tests pass and record3inner assertion failures.
-- [ ] Run both full changed modules normal/static/SAN and hex controls:9reports,
+- [x] Run both full changed modules normal/static/SAN and hex controls:9reports,
   zero failures/errors/skips, with actual source/flat/generated replay. Verify
   all48 products and4133 unaffected inputs. Archive probes before make dist;
   check five exact changed package members and whitespace. Read diff and commit;
   task-done runs python3 tests/.task213-check.py, expected all checks pass.
-- [ ] One fresh whole-branch review; regrade, one blocking repair wave if needed,
+- [x] One fresh whole-branch review; regrade, one blocking repair wave if needed,
   no rereview; ledger any Minors and final inherited count.
-- [ ] Merge master, verify merged tests/products/package identities, push,
+- [x] Merge master, verify merged tests/products/package identities, push,
   archive only own workspace/helpers, retire branch; preserve detached worktree.
+
+Completed at `8abde53`, merged and pushed as `1d601ff`.
+Independent review0C/0I/0M resolves two inherited gaps;23 findings remain.
+12 qualification gates/9reports105methods and5merged checks/26methods pass.
+117stashes preserved; evidence build/literal-history-oracles-20261128/.

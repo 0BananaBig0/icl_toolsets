@@ -2794,7 +2794,17 @@ flags distinguish queued execution from an incorrect eager sequence. The old
 tests accepted zero-default and eager-order controls; both strengthened oracles
 reject them through three actual native assertion failures. Two meta-tests pass.
 Fresh full changed-module and hexadecimal-control qualification follows in the
-receipt; producer behavior and all48 products stay unchanged. Two inherited
-test gaps are candidate closures:25 minus2 =23 pending independent confirmation.
+receipt; producer behavior and all48 products stay unchanged. Both inherited
+test gaps are resolved after independent review:0 Critical,0 Important and0
+Minor issues;23 findings remain deferred.
 Evidence: `build/literal-history-oracles-20261128/`. Broader inventory and
 excluded coverage item1 remain open.
+
+Task213 is merged and pushed as `1d601ff`. All12 qualification gates,
+nine reports/105 method executions and five merged-result checks/26 fresh methods
+pass, with no skipped cases. All4135 final input hashes and48 unchanged products
+match; the five changed package members are exact. All117 stashes are preserved.
+The owned branch is retired; only its five ledger files and two helpers are
+archived, retaining the detached worktree and siblings. Raw initial failure,
+corruption controls, final logs, review and source archive remain under
+`build/literal-history-oracles-20261128/`. Broader inventory/item1 stay open/excluded.
