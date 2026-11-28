@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import signal
 import subprocess
 import tempfile
 import time
@@ -58,11 +59,26 @@ def main():
         command = [str(binaries[owner]), "--icl", str(icl), "--pdl", str(pdl),
                    "--top_module", "Chains", "--output", str(output), "--debug"]
         started = time.monotonic()
-        process = subprocess.run(["/usr/bin/time", "-f", "%e %M", "-o", str(metric), *command],
-                                 capture_output=True, text=True, timeout=30)
-        (root / "process.log").write_text(process.stdout + process.stderr)
+        timed_out = False
+        with subprocess.Popen(["/usr/bin/time", "-f", "%e %M", "-o", str(metric), *command],
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                              text=True, start_new_session=True) as process:
+            try:
+                stdout, stderr = process.communicate(timeout=30)
+            except subprocess.TimeoutExpired:
+                timed_out = True
+            finally:
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+            if timed_out:
+                stdout, stderr = process.communicate()
+        (root / "process.log").write_text(stdout + stderr)
+        if timed_out:
+            raise RuntimeError(str(root) + "\nmeasured process group deadline exceeded")
         if process.returncode:
-            raise RuntimeError(str(root) + "\n" + process.stdout + process.stderr)
+            raise RuntimeError(str(root) + "\n" + stdout + stderr)
         elapsed = time.monotonic() - started
         seconds, rss = metric.read_text().split()
         data = output.read_text()

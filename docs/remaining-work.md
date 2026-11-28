@@ -2980,3 +2980,24 @@ All 117 stashes remain. Five owned ledger files and five helpers are archived;
 the completed branch is retired and the reusable detached worktree and siblings
 remain. Evidence: `build/raw-replay-evidence-20261128/`. Broader original tasks
 remain open; item 1 stays excluded.
+
+## Task220 callback failure evidence
+
+The merged-callback benchmark starts each measured command in its own process
+group and kills that group on completion or timeout, even after the parent exits.
+The 30-second Python deadline, 10-second acceptance bound and memory limits stay
+in place. A real TERM-resistant child signals readiness before its delayed write;
+the test requires the actual deadline diagnostic and rejects early fork failures.
+Its shortened deadline applies only to that deliberate sleeper.
+
+Split-file local-reset replay now executes the combined rewrite once, without
+adding its second input again. A native counter catches duplicate execution.
+Storage-ownership rejection checks now pin the scan-budget cause, reserved
+value and blocked write, while preserving the prior output artifact. A private
+real-native error-corruption control distinguishes the old false acceptance
+from the stronger assertion. Generator/runtime behavior remains unchanged.
+
+Three inherited findings are candidate closures: 14 minus 3 leaves 11 before
+review. Qualification and independent review are recorded in
+`build/callback-failure-evidence-20261128/`. Broader original tasks remain open;
+item 1 stays excluded.

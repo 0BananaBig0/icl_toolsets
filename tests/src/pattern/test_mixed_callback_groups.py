@@ -195,8 +195,17 @@ iNote [iGetReadData spare_out -dec]; iNote [iGetReadData q -dec]
         self.assertEqual(original, self.run_tool(self.root / "debug/Chains.icl", pdl,
                                                 "flat/result.pdl", extra=("--local_reset", str(self.root / "flat/reset.pdl"), *extra)))
         self.assertEqual(original, self.run_tool(icl, self.root / "result.pdl", "generated/result.pdl"))
-        self.assertEqual(original, self.run_tool(icl, self.root / "reset.pdl", "rewritten/result.pdl", extra=extra))
+        self.assertEqual(original, self.run_tool(icl, self.root / "reset.pdl", "rewritten/result.pdl"))
         return original, reset
+
+    def test_split_local_reset_replay_executes_second_file_once(self):
+        output, rewritten = self.reset_replay('set ::split_count 0\niReset\n',second=
+            'incr ::split_count\n'
+            'if {$::split_count != 1} {error second_file_repeated}\n'
+            'iWrite spare 3; iApply; iRead spare_out 0; iApply\n'
+            'iNote [iGetReadData spare_out -dec]\n')
+        self.assertEqual(self.notes(output),[b'3'])
+        self.assertEqual(rewritten.count('incr ::split_count'),1)
 
     def test_split_prefix_namespace_arguments(self):
         source = """Module Leaf {DataRegister value[3:0] {WriteCallBack Chains::ops store <D> <R>;}}
