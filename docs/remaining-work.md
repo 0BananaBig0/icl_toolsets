@@ -2886,3 +2886,7 @@ inputs/48products, not rerun or relabelled fresh. One inherited finding is a
 candidate closure:23 minus1 =22 pending independent confirmation. Evidence:
 `build/readback-invocation-oracles-20261128/`. Broader original inventory and
 excluded coverage item1 remain open.
+
+Task216 review repair preserves exact stack boundaries:4extra meta-tests
+reject36 stray-prefix/blank-interruption cases. Final qualification covers
+6meta-tests/54 corruptions, with fresh3variant whole-module runs after repair.

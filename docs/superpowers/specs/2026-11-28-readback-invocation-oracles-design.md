@@ -38,3 +38,9 @@ no rereview. Inherited23 minus1 candidate =22. Preserve117 stashes and unrelated
 state; merge, verify, push, archive only owned private files/ledger and retire
 branch while preserving reusable worktree. Broader inventory/item1 remain
 open/excluded respectively.
+
+Review repair: retain exact block boundaries as well as coordinate values. Four
+additional real-native mutation controls reject36 misplaced-frame/blank-gap
+cases (RED4 failures, GREEN4 methods). Preserve prefix role-row exclusion and
+unfiltered complete suffix comparison; final qualification has8 gates and
+6meta methods/54 rejected corruptions. Rerun all3variants on final module bytes.

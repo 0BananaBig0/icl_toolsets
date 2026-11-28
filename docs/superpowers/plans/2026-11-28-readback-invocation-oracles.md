@@ -44,3 +44,9 @@ CLI fixtures; parent qualified manifests; current source/flat/generated helpers.
   no rereview; ledger Minors and updated inherited count.
 - [ ] Merge master, verify merged inputs/products/tests, push, archive owned
   workspace/helpers, retire branch and retain reusable detached worktree.
+
+Review repair: retain exact block boundaries as well as coordinate values. Four
+additional real-native mutation controls reject36 misplaced-frame/blank-gap
+cases (RED4 failures, GREEN4 methods). Preserve prefix role-row exclusion and
+unfiltered complete suffix comparison; final qualification has8 gates and
+6meta methods/54 rejected corruptions. Rerun all3variants on final module bytes.

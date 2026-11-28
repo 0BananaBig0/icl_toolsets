@@ -261,8 +261,9 @@ iReset
                         f'    iCall outer at {pdl}:9:{16 if merged else 1} (command {7 if merged else 6})',
                         f'    iCall inner at {pdl}:7:17 (command 1)',
                     ]
-                    recorded = error.split('\n  recorded operation calls:\n',1)[1].splitlines()
-                    self.assertEqual([line for line in recorded if line],frames,error)
+                    prefix, _, recorded = error.partition('\n  recorded operation calls:\n')
+                    self.assertNotRegex(prefix,r'(?m)^(?:    |  while )iCall ')
+                    self.assertEqual(recorded.splitlines(),frames,error)
                     self.assertNotIn('\n  while iCall ',error)
                     for path in protected:
                         self.assertEqual(path.read_bytes(),b'keep previous artifact\n')
@@ -298,14 +299,15 @@ iReset
                         self.assertIn(f'{pdl}:7:9:',error)
                         self.assertIn(f'{pdl}:6:45: opaque parallel scan chain length is unknown',error)
                         self.assertEqual(error.count('\n  recorded operation calls:\n'),1,error)
-                        lines = error.split('\n  recorded operation calls:\n',1)[1].splitlines()
+                        prefix, _, stack = error.partition('\n  recorded operation calls:\n')
+                        self.assertNotRegex(prefix,r'(?m)^(?:    |  while )iCall ')
                         invocations = [
                             f'iCall outer at {pdl}:11:{16 if merged else 1} (command {7 if merged else 6})',
                             f'iCall inner at {pdl}:9:17 (command 1)',
                         ] + [f'iCall inner at {pdl}:4:17 (command 1)']*depth
                         recorded = ['    '+frame for frame in invocations]
                         live = ['  while '+frame for frame in reversed(invocations)]
-                        self.assertEqual([line for line in lines if line],recorded+live,error)
+                        self.assertEqual(stack.splitlines(),recorded+live,error)
                         for path in protected:
                             self.assertEqual(path.read_bytes(),b'keep previous artifact\n')
 
