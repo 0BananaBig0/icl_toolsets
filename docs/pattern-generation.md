@@ -8157,9 +8157,9 @@ From the repository root, use its self-constructed BSDL test fixture:
 icl-pattern-generation --icl tap.icl --bsdl AccessProbe tests/cases/ours/pattern_generation/access_link/simple.bsdl --pdl observe.pdl --top_module TapModel --model_readback --physical_pdl --output result.pdl
 ~~~
 
-The notes are9,0b00001001,2,6,0. The first read sees old storage9
-before the same CSU updates6; its two mismatching bits accumulate and clear
-returns2. A later read sees6. The explicit IR setup is needed for exact
+The notes are 9, 0b00001001, 2, 6, 0. The first read sees old storage 9
+before the same CSU updates it to 6; its two mismatching bits accumulate and clear
+returns 2. A later read sees 6. The explicit IR setup is needed for exact
 physical replay. Removing --physical_pdl uses ordinary retargeting; both forms
 of this author walkthrough have been executed. The fixture is an ICL/BSDL
 model, not a certificate for a physical device.
@@ -8692,9 +8692,11 @@ constant/unknown capture data and static aliases retain their native meaning.
 The implementation uses the existing concrete capture and complete-shift
 engine; it does not allocate a field-count by maximum-length matrix.
 
-When a fixed field is omitted, generated output reuses its current controlling
-fill, clears expected comparisons and marks its static input stable. This
-preserves its storage. Only explicit requests create source raw history or
+An omitted fixed field is scanned using its retained controlling fill, with
+expected comparisons cleared and its static input marked stable. Known explicit
+load bits refresh that fill; X-valued bits leave remembered known fill unchanged.
+Consequently, an implicit scan can load remembered known bits into storage that
+currently contains unknowns. Only explicit requests create source raw history or
 claim assigned storage; implicit output commands do not fabricate source
 observations. Raw histories and ordinary register histories remain separate.
 Known explicit assignments refresh the existing held-storage value policy;
@@ -8835,9 +8837,9 @@ per-file ordered overrides. Of these default models:
 
 | Actual outcome | Count | Meaning |
 |---|---:|---|
-| Required canonical roundtrip | 1016 | Real SerializeIcl, flat load/elaboration and repeated SerializeIcl bytes agree |
-| Explicitly unsupported serialization | 56 | 44 unbound AccessLinks, seven PortGroups and five LaunchEdge properties |
-| Original default elaboration failure | 691 | Reported actual errors; many fixtures are intentionally incomplete or require dependencies/parameters |
+| Required canonical roundtrip | 1032 | Real SerializeIcl, flat load/elaboration and repeated SerializeIcl bytes agree |
+| Explicitly unsupported serialization | 44 | Unbound AccessLinks |
+| Original default elaboration failure | 687 | Reported actual errors; many fixtures are intentionally incomplete or require dependencies/parameters |
 
 PASS requires every pinned canonical model, exact unsupported boundaries,
 complete current file/module coverage and no internal map::at diagnostics.
