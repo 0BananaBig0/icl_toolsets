@@ -2964,8 +2964,19 @@ readback matrices use at least two calls so a later capture observes an actual
 preceding high-bit load. PIO call counts and larger raw requests retain their
 meaning. No generator or runtime behavior changes.
 
-Three inherited findings are candidate closures: 17 minus 3 leaves 14 before
-review. Qualification and independent review are recorded in
+Three inherited findings are resolved. Independent review found
+0 Critical, 1 Important (fixed) and 0 new Minor issues; 14 findings remain deferred. Qualification and independent review are recorded in
 `build/raw-replay-evidence-20261128/`. Existing performance limits and the open
 1,024-bit PIO memory finding remain; broader original tasks remain open and
 item 1 stays excluded.
+
+Task219 is merged and pushed as `782ef08`. All 15 qualification gates pass:
+57 affected module methods, 89 bounded benchmark runs, the reset-artifact
+mutation control and 18 source/flat/generated native processes verifying actual
+512-/1,024-bit captures. Seven merged checks pass, including 38 normal/static
+module methods. All 4,135 inputs, 48 unchanged products and seven package members
+match qualified bytes. Native/build/broad evidence remains retained by identity.
+All 117 stashes remain. Five owned ledger files and five helpers are archived;
+the completed branch is retired and the reusable detached worktree and siblings
+remain. Evidence: `build/raw-replay-evidence-20261128/`. Broader original tasks
+remain open; item 1 stays excluded.

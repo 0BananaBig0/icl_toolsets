@@ -35,17 +35,17 @@ build/raw-replay-evidence-20261128 evidence.
 **Interfaces:** Existing fixture tuples, ordered frame parser, raw captures and
 source/flat/generated/local-reset replay helpers. No new public interface.
 
-- [ ] Add native reset mutation control and maintained high-bit/matrix tests.
+- [x] Add native reset mutation control and maintained high-bit/matrix tests.
   Run against parent code; expected assertion failures, no setup errors.
-- [ ] Separate/compare reset rewrites; set high/middle payload bits above width4;
+- [x] Separate/compare reset rewrites; set high/middle payload bits above width4;
   select at least two raw wide calls while retaining PIO and larger counts.
   Expected focused controls GREEN with actual native observations.
-- [ ] Run all affected modules normal/static/default-leak SAN and representative
+- [x] Run all affected modules normal/static/default-leak SAN and representative
   wide raw matrices. Archive probe; package seven exact members and verify
   4,135 final inputs/48 unchanged products/whitespace. Commit selected diff;
   task-done runs python3 tests/.task219-check.py, expected all checks pass.
-- [ ] Fresh review; regrade and repair blocking findings once if necessary.
-- [ ] Merge, verify, push, archive owned ledger/helpers and retire branch.
+- [x] Fresh review; regrade and repair blocking findings once if necessary.
+- [x] Merge, verify, push, archive owned ledger/helpers and retire branch.
 
 Review repair: preserve the low nibble at widths 5–7 by choosing the second
 added bit at max(4, width//2). At width 5 only bit 4 lies above the low nibble,
@@ -53,3 +53,10 @@ so both payloads use that upper position while their low nibbles distinguish
 them. Widths 6–7 use bit 4 for the second payload. Literal three-call checks
 cover widths 5–16; a native 5/6/7-bit matrix and all three full-module variants
 verify the fix. Previously measured 4/512/1,024-bit fixtures remain byte-identical.
+
+Completed at `74a9aa6`, merged and pushed as `782ef08`. Independent
+review: 0 Critical, 1 Important (fixed), 0 new Minor issues. Three inherited findings
+are resolved and 14 remain deferred. All 15 qualification gates and seven
+merged-result checks pass. All 117 stashes are preserved. Broader generator
+evidence remains retained by identity.
+Evidence: `build/raw-replay-evidence-20261128/`.
