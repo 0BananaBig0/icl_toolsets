@@ -3024,8 +3024,9 @@ executes only the wide method under explicit options and requires a real metric
 and no skip. Native products, parent environment and resource limits stay
 unchanged. The old decorator falsely skipped that child test.
 
-One inherited finding is a candidate closure: 11 minus 1 leaves 10 before
-review. Qualification distinguishes all normal/static executions from the two
+The inherited false-skip finding is resolved. Independent review found
+0 Critical, 1 Important (fixed) and 0 new Minor issues; 10 findings remain deferred.
+Qualification distinguishes all normal/static executions from the two
 intentional sanitizer skips (wide case and its normal/static meta-check).
 Evidence: `build/asan-budget-selection-20261128/`. Broader original tasks remain
 open; item 1 stays excluded.
@@ -3035,3 +3036,15 @@ case and retains their exit status and original stderr. A harmless failing
 executable proves the wide command is never attempted after an inconclusive
 probe. Final qualification reports 60 methods, with 58 executed and two explicit
 sanitizer skips.
+
+Task221 is merged and pushed as `ceb728a`. All eleven qualification gates pass:
+five reports contain 60 reported methods, 58 executed methods and two intentional
+sanitizer skips. All four normal/static environments run without skips. Three
+actual product probes confirm instrumentation. Five merged checks pass, including
+24 normal/static methods with ASAN_OPTIONS set and no skips. All 4,135 inputs,
+48 unchanged products and four package members match qualified bytes. Prior
+native/build/broad evidence remains retained by identity. All 117 stashes remain.
+Five owned ledger files and five helpers are archived; the completed branch is
+retired and the reusable detached worktree and siblings remain.
+Evidence: `build/asan-budget-selection-20261128/`. Broader original tasks remain
+open; item 1 stays excluded.

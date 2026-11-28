@@ -31,17 +31,17 @@ private tests/.task221-* helpers; build/asan-budget-selection-20261128.
 **Interfaces:** Existing native --version and ASAN help stderr, current wide test
 and qualified product manifests. No native behavior or API changes.
 
-- [ ] Add eligible-build cross-environment regression. Run against the old
+- [x] Add eligible-build cross-environment regression. Run against the old
   decorator; expected one assertion failure exposing the child false skip.
-- [ ] Probe actual runtime once and replace environment-only decorator.
+- [x] Probe actual runtime once and replace environment-only decorator.
   Expected focused GREEN and the same sanitizer exclusion.
-- [ ] Run full module normal/static with and without ASAN_OPTIONS, plus default-
+- [x] Run full module normal/static with and without ASAN_OPTIONS, plus default-
   leak SAN; expected 5 reports/60 reported methods/58 executed/2 intentional SAN
   skips. Record three native probe responses; package four exact files and verify
   4,135 final inputs/48 unchanged products/whitespace. Commit selected diff;
   task-done runs python3 tests/.task221-check.py.
-- [ ] Fresh review; regrade and repair blocking findings once if necessary.
-- [ ] Merge, verify, push, archive owned ledger/helpers and retire branch.
+- [x] Fresh review; regrade and repair blocking findings once if necessary.
+- [x] Merge, verify, push, archive owned ledger/helpers and retire branch.
 
 Review repair: require exit 0 from the version probe before classifying its
 stderr. Report an inconclusive probe with its status and original stderr. A
@@ -49,3 +49,10 @@ harmless executable returns 2 for --version and marks any attempted wide command
 the maintained regression must fail before the fix and confirm no attempt after
 the fix, without launching an unqualified wide sanitizer workload. Final five
 reports contain 60 reported methods, 58 executed and two intentional SAN skips.
+
+Completed at `57c0bf5`, merged and pushed as `ceb728a`. Independent
+review: 0 Critical, 1 Important (fixed), 0 new Minor issues. One inherited finding
+is resolved and 10 remain deferred. Eleven qualification gates and five
+merged checks pass. All 117 stashes are preserved. Two sanitizer-only skips
+remain explicitly unrun; broader evidence remains retained by identity.
+Evidence: `build/asan-budget-selection-20261128/`.
