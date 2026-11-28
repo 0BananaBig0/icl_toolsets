@@ -65,6 +65,7 @@ int main(int argc, char** argv) {
     for (int i = 1; i < argc; ++i) {
       std::cout << InspectFile(argv[i]).Serialize() << '\n';
     }
+    std::cout.flush();
     if (!std::cout) throw std::runtime_error("cannot write inventory");
   } catch (const std::exception& error) {
     std::cerr << error.what() << '\n';

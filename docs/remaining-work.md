@@ -2906,26 +2906,38 @@ inventory and excluded coverage item1 remain open.
 ## Task217 current guide facts
 
 Four older documentation findings are corrected locally: readable Task151
-walkthrough values, qualified item6 history scope, retained controlling fill
+walkthrough values, qualified item 6 history scope, retained controlling fill
 versus unknown current storage, and the explicitly current corpus audit table.
 Fresh source/flat/generated CLI checks confirm walkthrough notes
-9/0b00001001/2/6/0 in ordinary and physical modes and remembered0b10 fill after
-X-valued loads. The fresh corpus audit reports1032canonical,44unsupported
-unboundAccessLinks and687default elaboration failures. Dated measurements and
-all runtime behavior remain unchanged.
+9 / 0b00001001 / 2 / 6 / 0 in ordinary and physical modes and remembered 0b10 fill
+after X-valued loads. The fresh corpus audit reports 1,032 canonical models,
+44 unsupported unbound AccessLinks and 687 default elaboration failures.
+Dated measurements and runtime behavior remain unchanged.
 
-Packaging, unchanged4135inputs/48products and independent review follow in
-`build/model-guide-facts-20261128/`. Four inherited documentation findings
-are resolved. Independent review found0 Critical,0 Important and1 new Minor
-issues;19 findings remain deferred. Broader original tasks remain
-open;item1 stays excluded.
+Four inherited documentation findings are resolved. Independent review found
+0 Critical, 0 Important and 1 new Minor issue: spacing in this summary.
+That leaves 19 deferred findings at the Task217 checkpoint. The spacing follow-up
+is addressed in Task218. Broader original tasks remain open; item 1 stays excluded.
 
-Task217 is merged and pushed as `723c384`. Six scoped qualification gates
-pass:2fact methods/9source-flat-generated CLI processes, the2562-file corpus
-audit, unchanged4135inputs/48products, four exact package members and whitespace.
-Three merged-result checks pass on identical source/product/package hashes.
-Prior native/SAN/source-build/broad evidence remains retained by identity, not
-rerun.117stashes remain. Only this task’s5ledger files/3helpers are archived;
-the branch is retired and reusable detached worktree/siblings preserved.
-Evidence: `build/model-guide-facts-20261128/`. Broader original inventory and
-excluded coverage item1 remain open.
+Task217 is merged and pushed as `723c384`. Six scoped qualification gates pass:
+2 fact methods covering 9 source/flat/generated CLI processes, the 2,562-file
+corpus audit, 4,135 unchanged inputs, 48 unchanged products, four exact package
+members and whitespace. Three merged-result checks pass on matching hashes.
+Prior native, sanitizer, source-build and broad evidence remains retained by
+identity. All 117 stashes remain. This task's five ledger files and three helpers
+are archived; its branch is retired and the reusable detached worktree and
+siblings are preserved. Evidence: `build/model-guide-facts-20261128/`.
+
+## Task218 inventory output errors
+
+The model inventory helper now flushes stdout once at the end of its batch
+before checking stream state. A short report sent to `/dev/full` must return
+exit 2 with `cannot write inventory`. The maintained regression first observed
+incorrect exit 0 from the parent binary. Successful JSON content and ordering,
+existing diagnostics, batch processing and runtime modeling remain unchanged.
+Task217's summary spacing is also corrected without changing its values.
+
+Qualification and independent review are recorded in
+`build/inventory-output-errors-20261128/`. Two inherited findings are candidate
+closures: 19 minus 2 leaves 17 before review. Broader original tasks remain open;
+item 1 stays excluded.
