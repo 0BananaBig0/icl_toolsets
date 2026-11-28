@@ -2,11 +2,26 @@
 """Forced one-frame pin words retain native events while meeting wide budgets."""
 import os
 import subprocess
+import sys
 import unittest
 
 import test_simultaneous_scan_chains as cli
 import test_modeled_readback as history
 import test_merged_readback as merged
+
+
+def asan_runtime_present():
+    env = dict(os.environ)
+    options = env.get('ASAN_OPTIONS','')
+    env['ASAN_OPTIONS'] = (options+':' if options else '')+'help=1'
+    result = subprocess.run([str(cli.BIN),'--version'],env=env,
+                            capture_output=True,text=True,timeout=45)
+    if result.returncode:
+        raise RuntimeError(f'sanitizer runtime probe failed (exit {result.returncode}): {result.stderr}')
+    return 'Available flags for AddressSanitizer:' in result.stderr.splitlines()
+
+
+ASAN_RUNTIME_PRESENT = asan_runtime_present()
 
 
 class PrimaryPinLiterals(unittest.TestCase):
@@ -18,7 +33,7 @@ class PrimaryPinLiterals(unittest.TestCase):
     def check(self, model, body):
         return self.replay(model, 'iPDLLevel 1\niProcsForModule Chains\n'+body)
 
-    @unittest.skipIf('ASAN_OPTIONS' in os.environ,
+    @unittest.skipIf(ASAN_RUNTIME_PRESENT,
                      'normal/static wide budget; smaller sanitizer cases measured separately')
     def test_wide_memory_goal(self):
         width = 1024
@@ -45,6 +60,39 @@ class PrimaryPinLiterals(unittest.TestCase):
         self.assertLessEqual(rss, 262144)
         self.assertEqual(data, self.run_tool(self.root/'debug/Chains.icl', pdl, 'flat/result.pdl'))
         self.assertEqual(data, self.run_tool(model, output, 'generated/result.pdl'))
+
+    def wide_budget_process(self,binary,env):
+        check = ('import sys,unittest\n'
+            + 'sys.path.insert(0,'+repr(os.path.dirname(__file__))+')\n'
+            + 'sys.argv=['+repr(__file__)+','+repr(str(binary))+']\n'
+            + 'import test_primary_pin_literals as module\n'
+            + 'result=unittest.TextTestRunner().run(unittest.TestSuite(['
+            + 'module.PrimaryPinLiterals(\"test_wide_memory_goal\")]))\n'
+            + 'raise SystemExit(not result.wasSuccessful())\n')
+        return subprocess.run([sys.executable,'-c',check],env=env,
+                              capture_output=True,text=True,timeout=45)
+
+    def test_normal_budget_runs_with_asan_options(self):
+        if getattr(self.test_wide_memory_goal,'__unittest_skip__',False):
+            self.skipTest('normal/static wide budget guard; sanitizer wide case remains excluded')
+        result = self.wide_budget_process(cli.BIN,dict(os.environ,ASAN_OPTIONS='detect_leaks=1'))
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        self.assertIn('Ran 1 test',result.stderr)
+        self.assertNotIn('skipped=',result.stderr)
+        self.assertIn('primary pin width=1024 wall_seconds=',result.stdout)
+
+    def test_failed_probe_cannot_schedule_wide_budget(self):
+        attempted = self.root/'wide-attempted'
+        binary = self.root/'failed-probe.py'
+        binary.write_text('#!'+sys.executable+'\nimport sys\nfrom pathlib import Path\n'
+            +'if "--version" in sys.argv:\n print("intentional version probe failure",file=sys.stderr)\n raise SystemExit(2)\n'
+            +'Path('+repr(str(attempted))+').touch()\nraise SystemExit(3)\n')
+        binary.chmod(0o755)
+        result = self.wide_budget_process(binary,dict(os.environ))
+        self.assertNotEqual(result.returncode,0,result.stdout+result.stderr)
+        self.assertFalse(attempted.exists(),'wide budget was scheduled after an inconclusive runtime probe')
+        self.assertIn('sanitizer runtime probe failed (exit 2)',result.stderr)
+        self.assertIn('intentional version probe failure',result.stderr)
 
     def test_zero_and_matching_goals(self):
         output = self.check(history.BASE, '''iState p 0

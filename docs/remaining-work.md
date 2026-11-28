@@ -3013,3 +3013,25 @@ All 117 stashes remain. Five owned ledger files and five helpers are archived;
 the completed branch is retired and the reusable detached worktree and siblings
 remain. Evidence: `build/callback-failure-evidence-20261128/`. Broader original
 tasks remain open; item 1 stays excluded.
+
+## Task221 sanitizer budget selection
+
+The primary-pin wide budget test now identifies the actual AddressSanitizer
+runtime from its existing version/help response. Setting `ASAN_OPTIONS` while
+running normal or static binaries no longer suppresses their 1,024-bit check.
+The unqualified sanitizer wide case remains excluded. A maintained regression
+executes only the wide method under explicit options and requires a real metric
+and no skip. Native products, parent environment and resource limits stay
+unchanged. The old decorator falsely skipped that child test.
+
+One inherited finding is a candidate closure: 11 minus 1 leaves 10 before
+review. Qualification distinguishes all normal/static executions from the two
+intentional sanitizer skips (wide case and its normal/static meta-check).
+Evidence: `build/asan-budget-selection-20261128/`. Broader original tasks remain
+open; item 1 stays excluded.
+
+Task221 review repair rejects failed runtime probes before selecting any budget
+case and retains their exit status and original stderr. A harmless failing
+executable proves the wide command is never attempted after an inconclusive
+probe. Final qualification reports 60 methods, with 58 executed and two explicit
+sanitizer skips.
