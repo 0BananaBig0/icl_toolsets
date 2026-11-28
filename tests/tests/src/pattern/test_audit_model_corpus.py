@@ -75,6 +75,15 @@ class ModelAuditTest(unittest.TestCase):
         self.assertEqual(len(report["inputs"]), 4)
         self.assertEqual(len(report["inventory_sha256"]), 64)
 
+    @unittest.skipUnless(Path("/dev/full").exists(), "/dev/full is required")
+    def test_short_inventory_detects_buffered_stdout_failure(self):
+        with open("/dev/full", "wb") as output:
+            result = subprocess.run(
+                [str(INVENTORY), str(self.root / "b.icl")], stdout=output,
+                stderr=subprocess.PIPE, text=True, timeout=45)
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertIn("cannot write inventory", result.stderr)
+
     def test_stale_missing_and_unlisted_input_are_rejected(self):
         (self.root / "a.icl").write_text("Module Different {}")
         with patch.object(audit_module.subprocess, "run") as backend:
