@@ -2853,7 +2853,19 @@ pass. Scoped qualification covers normal/static/SAN callers, affected native
 suites, C++ quality, source build/install and final input/product/package hashes.
 Task214's228-report/3572-method full run is retained only for unchanged execution
 logic, with exact provider source identity outside the formatting fragment; it
-is not rerun or described as a fresh full pass. One inherited finding is a
-candidate closure:23 minus1 =22 pending independent confirmation. Evidence:
+is not rerun or described as a fresh full pass. The inherited ambiguity finding
+is resolved. Independent review found0 Critical,0 Important and1 new Minor
+issues;23 findings remain deferred. Evidence:
 `build/readback-diagnostic-ancestry-20261128/`. Broader inventory and excluded
 coverage item1 remain open.
+
+Task215 is merged and pushed as `750b0ef`. All39 scoped qualification gates
+pass:27CLI reports/486 methods,3 normal+3 default-leak native suites,6 C++
+quality checks and source build/install. Eight merged-result checks pass,
+including3native suites and38 normal/static CLI methods. All4135 final input
+hashes,48 rebuilt products and6package members match. Task214 broad regression
+remains retained by source-fragment identity; it is not a new full-project run.
+117stashes remain. The owned branch is retired after archiving only its five
+ledger files and five helpers; the detached worktree and siblings remain.
+Evidence: `build/readback-diagnostic-ancestry-20261128/`. Broader original
+inventory and excluded coverage item1 remain open.

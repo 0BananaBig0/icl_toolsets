@@ -39,12 +39,18 @@ unwinding; no protocol or public type changes.
 - [x] Add recorded-block header only for nonempty stacks and four-space frame
   indentation. Native and whole CLI GREEN; exact empty/cached error controls and
   actual recursive frame multiplicities/locations/artifacts pass.
-- [ ] Prove fragment identity, run normal/SAN native readback/runtime/opaque6,
+- [x] Prove fragment identity, run normal/SAN native readback/runtime/opaque6,
   nine CLI modules in3variants27reports, six C++ quality checks, source build/
   install, six exact package members, final4135/48 identities and whitespace.
   Read selected diff, commit, then task-done with python3 tests/.task215-check.py;
   expected all scoped gates pass with214 broad evidence explicitly retained.
-- [ ] One fresh whole-branch review; regrade, one blocking repair wave if needed,
+- [x] One fresh whole-branch review; regrade, one blocking repair wave if needed,
   no rereview; ledger Minors and updated inherited count.
-- [ ] Merge master, verify merged products/source/tests, push, archive owned
+- [x] Merge master, verify merged products/source/tests, push, archive owned
   workspace/helpers, retire branch and preserve reusable detached worktree.
+
+Completed at `81e5b53`, merged and pushed as `750b0ef`. Independent
+review0C/0I/1newM;one inherited resolution,23 findings remain.39 scoped
+qualification gates and8merged checks pass;117stashes preserved. Full214
+evidence is retained for unchanged logic, not rerun.
+Evidence:build/readback-diagnostic-ancestry-20261128/.
