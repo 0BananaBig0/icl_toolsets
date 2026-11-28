@@ -491,11 +491,16 @@ Module Top {
  }
 })");
   const auto netlist = pattern::Elaborate(design, "Top");
-  for (bool nested : {false, true}) {
-    const std::vector<std::string> frames =
-        nested ? std::vector<std::string>{"iCall outer at outer.pdl:3",
-                                          "iCall inner at inner.pdl:5"}
-               : std::vector<std::string>{};
+  const std::vector<std::pair<std::vector<std::string>, std::string>> cases{
+      {{}, ""},
+      {{"iCall outer at outer.pdl:3", "iCall inner at inner.pdl:5"},
+       "\n  recorded operation calls:"
+       "\n    iCall outer at outer.pdl:3\n    iCall inner at inner.pdl:5"},
+      {{"iCall recur at recursive.pdl:5", "iCall recur at recursive.pdl:5"},
+       "\n  recorded operation calls:"
+       "\n    iCall recur at recursive.pdl:5\n    iCall recur at "
+       "recursive.pdl:5"}};
+  for (const auto& [frames, suffix] : cases) {
     pattern::Runtime::StatusReadback status;
     const auto readback = pattern::MakeModeledReadback(netlist, false, &status);
     std::vector<pattern::Operation> operations{
@@ -513,13 +518,8 @@ Module Top {
                           "worker.pdl:8",
                           frames});
     operations.push_back({"iApply", {}, "worker.pdl:9", frames});
-    std::string expected =
-        "worker.pdl:9: opaque parallel scan chain length is unknown";
-    if (nested) {
-      expected +=
-          "\n  while iCall outer at outer.pdl:3"
-          "\n  while iCall inner at inner.pdl:5";
-    }
+    const std::string expected =
+        "worker.pdl:9: opaque parallel scan chain length is unknown" + suffix;
     for (int query = 0; query < 3; ++query) {
       std::string message;
       try {
