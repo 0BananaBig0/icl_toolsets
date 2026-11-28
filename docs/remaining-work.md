@@ -2938,6 +2938,17 @@ existing diagnostics, batch processing and runtime modeling remain unchanged.
 Task217's summary spacing is also corrected without changing its values.
 
 Qualification and independent review are recorded in
-`build/inventory-output-errors-20261128/`. Two inherited findings are candidate
-closures: 19 minus 2 leaves 17 before review. Broader original tasks remain open;
+`build/inventory-output-errors-20261128/`. Two inherited findings are resolved. Independent review found
+0 Critical, 0 Important and 0 new Minor issues; 17 findings remain deferred. Broader original tasks remain open;
 item 1 stays excluded.
+
+Task218 is merged and pushed as `cfc0637`. All 13 qualification gates pass:
+28 helper methods, two full corpus audits, three C++ quality checks, source
+package build/install and exact input/product/package verification. Five merged
+checks pass, including 14 helper methods and the current corpus audit. All
+4,135 inputs, 48 products and five package members match the qualified bytes.
+Broader generator/native evidence is retained by identity. All 117 stashes remain.
+Five owned ledger files and five helpers are archived; the completed branch is
+retired and the reusable detached worktree and siblings remain.
+Evidence: `build/inventory-output-errors-20261128/`. Broader original tasks
+remain open; item 1 stays excluded.

@@ -34,14 +34,21 @@ build/inventory-output-errors-20261128.
 **Interfaces:** Existing line-delimited JSON inventory and Python audit consumer;
 parent manifests. Produces unchanged success protocol and accurate exit 2 on failure.
 
-- [ ] Add real short-output /dev/full test; run against parent binary. Expected
+- [x] Add real short-output /dev/full test; run against parent binary. Expected
   one assertion failure (actual exit 0 rather than 2), not a harness error.
-- [ ] Add one final stdout flush; rebuild both inventory variants. Expected
+- [x] Add one final stdout flush; rebuild both inventory variants. Expected
   complete helper/protocol module and actual corpus audits pass in both variants.
-- [ ] Fix Task217 summary spacing while preserving all values. Run three C++
+- [x] Fix Task217 summary spacing while preserving all values. Run three C++
   quality checks, source package/build/install, exact five-member package and
   final input/product/whitespace verification. Commit selected diff; task-done
   runs python3 tests/.task218-check.py, expected all checks pass.
-- [ ] Fresh whole-branch review; regrade and fix blocking issues once if needed.
-- [ ] Merge master, verify merged results, push, archive owned ledger/helpers,
+- [x] Fresh whole-branch review; regrade and fix blocking issues once if needed.
+- [x] Merge master, verify merged results, push, archive owned ledger/helpers,
   retire branch and preserve reusable detached worktree.
+
+Completed at `b16483e`, merged and pushed as `cfc0637`. Independent
+review: 0 Critical, 0 Important, 0 new Minor issues. Two inherited findings
+are resolved and 17 remain deferred. All 13 qualification gates and five
+merged-result checks pass. All 117 stashes are preserved. Broader generator
+evidence remains retained by identity.
+Evidence: `build/inventory-output-errors-20261128/`.
