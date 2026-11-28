@@ -2869,3 +2869,24 @@ remains retained by source-fragment identity; it is not a new full-project run.
 ledger files and five helpers; the detached worktree and siblings remain.
 Evidence: `build/readback-diagnostic-ancestry-20261128/`. Broader original
 inventory and excluded coverage item1 remain open.
+
+## Task216 complete invocation-coordinate oracles
+
+Completed-call and active-getter tests now compare exact ordered invocation
+strings: fixture path, call-site line, column and command number, including
+recursive duplicates and both roles. Getter and failing-Apply paths/columns
+are pinned separately. Real native failures with deliberately wrong invocation
+fields passed all18 old subcases; the strengthened tests reject all18, while
+two meta-tests pass. The producer is unchanged.
+
+Fresh full changed-module runs on normal/static/default-leak sanitizer binaries
+and exact package/input/product checks follow in the receipt. Prior native,
+quality, source-build and broader evidence is retained only by unchanged4134
+inputs/48products, not rerun or relabelled fresh. One inherited finding is a
+candidate closure:23 minus1 =22 pending independent confirmation. Evidence:
+`build/readback-invocation-oracles-20261128/`. Broader original inventory and
+excluded coverage item1 remain open.
+
+Task216 review repair preserves exact stack boundaries:4extra meta-tests
+reject36 stray-prefix/blank-interruption cases. Final qualification covers
+6meta-tests/54 corruptions, with fresh3variant whole-module runs after repair.
