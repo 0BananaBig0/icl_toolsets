@@ -2882,11 +2882,23 @@ two meta-tests pass. The producer is unchanged.
 Fresh full changed-module runs on normal/static/default-leak sanitizer binaries
 and exact package/input/product checks follow in the receipt. Prior native,
 quality, source-build and broader evidence is retained only by unchanged4134
-inputs/48products, not rerun or relabelled fresh. One inherited finding is a
-candidate closure:23 minus1 =22 pending independent confirmation. Evidence:
+inputs/48products, not rerun or relabelled fresh. The inherited invocation-coordinate finding
+is resolved. Independent review found0 Critical,1 Important (fixed) and0 new Minor
+issues;22 findings remain deferred. Evidence:
 `build/readback-invocation-oracles-20261128/`. Broader original inventory and
 excluded coverage item1 remain open.
 
 Task216 review repair preserves exact stack boundaries:4extra meta-tests
 reject36 stray-prefix/blank-interruption cases. Final qualification covers
 6meta-tests/54 corruptions, with fresh3variant whole-module runs after repair.
+
+Task216 is merged and pushed as `e8c15dc`. All8 scoped qualification gates
+pass:3CLI reports/57 methods and6meta-tests rejecting54 deliberately corrupted
+invocation diagnostics. Five merged-result checks pass, including38 normal/static
+CLI methods. All4135 input hashes,48 unchanged products and4package members
+match. Native/quality/source-build215 and broad214 evidence remains retained
+by source/product identity; these are not fresh runs.117stashes remain.
+The owned branch is retired after archiving only its five ledger files and four
+helpers; the detached worktree and siblings remain.
+Evidence: `build/readback-invocation-oracles-20261128/`. Broader original
+inventory and excluded coverage item1 remain open.

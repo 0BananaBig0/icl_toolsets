@@ -36,13 +36,13 @@ CLI fixtures; parent qualified manifests; current source/flat/generated helpers.
   fields currently pass both completed and active tests.
 - [x] Replace prefix/multiplicity checks with full literal ordered role lists.
   Expected meta2GREEN, inner6+12 intended assertion failures and no errors.
-- [ ] Run full changed module normal/static/SAN:3reports57methods/0skips. Verify
+- [x] Run full changed module normal/static/SAN:3reports57methods/0skips. Verify
   4134unchanged inputs/48unchanged products; archive private probe, run make dist,
   four exact changed package members and whitespace. Read selected diff, commit;
   task-done runs python3 tests/.task216-check.py, expected all checks pass.
-- [ ] One fresh whole-branch review; regrade, one blocking repair wave if needed,
+- [x] One fresh whole-branch review; regrade, one blocking repair wave if needed,
   no rereview; ledger Minors and updated inherited count.
-- [ ] Merge master, verify merged inputs/products/tests, push, archive owned
+- [x] Merge master, verify merged inputs/products/tests, push, archive owned
   workspace/helpers, retire branch and retain reusable detached worktree.
 
 Review repair: retain exact block boundaries as well as coordinate values. Four
@@ -50,3 +50,9 @@ additional real-native mutation controls reject36 misplaced-frame/blank-gap
 cases (RED4 failures, GREEN4 methods). Preserve prefix role-row exclusion and
 unfiltered complete suffix comparison; final qualification has8 gates and
 6meta methods/54 rejected corruptions. Rerun all3variants on final module bytes.
+
+Completed at `5e7b236`, merged and pushed as `e8c15dc`. Independent
+review0C/1I fixed/0newM;one inherited resolution,22 findings remain.8 scoped
+qualification gates and5merged checks pass;117stashes preserved. Full214
+evidence is retained for unchanged logic, not rerun.
+Evidence:build/readback-invocation-oracles-20261128/.
