@@ -287,35 +287,35 @@ if {![catch {iGetReadData value}]} {error logical_callback_history}
 
     @unittest.skipUnless(hasattr(os,"fork"),"Unix process groups are required")
     def test_benchmark_deadline_terminates_measured_children(self):
-        started, marker, used = (self.root/name for name in ('started','child-finished','timeout-used'))
+        ready, marker, used = (self.root/name for name in ('child-ready','child-finished','deadline-used'))
         candidate = self.root/'sleeper.py'
-        candidate.write_text('#!'+sys.executable+'\nimport os,time\nfrom pathlib import Path\n'
-            +'Path('+repr(str(started))+').touch()\n'
-            +'if os.fork()==0:\n time.sleep(0.5)\n Path('+repr(str(marker))+').touch()\n os._exit(0)\n'
-            +'time.sleep(1)\n')
+        candidate.write_text('#!'+sys.executable+'\nimport os,signal,time\nfrom pathlib import Path\n'
+            +'if os.fork()==0:\n signal.signal(signal.SIGTERM,signal.SIG_IGN)\n'
+            +' Path('+repr(str(ready))+').touch()\n time.sleep(0.65)\n'
+            +' Path('+repr(str(marker))+').touch()\n os._exit(0)\n'
+            +'while not Path('+repr(str(ready))+').exists():time.sleep(0.005)\n'
+            +'time.sleep(0.1)\n')
         candidate.chmod(0o755)
-        folder = self.root/'bin'; folder.mkdir()
-        shim = folder/'timeout'
-        shim.write_text('#!'+sys.executable+'\nimport os,sys\nfrom pathlib import Path\n'
-            +'args=sys.argv[1:]\nif len(args)>2 and args[2]=='+repr(str(candidate))+':\n'
-            +' assert args[:2]==["--kill-after=2s","27s"]\n'
-            +' Path('+repr(str(used))+').write_text("\\n".join(args))\n'
-            +' args[:2]=["--kill-after=0.1s","0.2s"]\n'
-            +'os.execv("/usr/bin/timeout",["timeout",*args])\n')
-        shim.chmod(0o755)
-        script = Path(__file__).with_name('benchmark_merged_callbacks.py')
-        result = subprocess.run(['python3',str(script),'--binary',str(candidate),
+        driver = self.root/'deadline-driver.py'
+        driver.write_text('import subprocess,sys\nfrom pathlib import Path\n'
+            +'sys.path.insert(0,'+repr(str(Path(__file__).parent))+')\n'
+            +'import benchmark_merged_callbacks as bench\n'
+            +'original=subprocess.Popen.communicate\n'
+            +'def communicate(self,input=None,timeout=None):\n'
+            +' if '+repr(str(candidate))+' in self.args and timeout==30:\n'
+            +'  Path('+repr(str(used))+').write_text(str(timeout))\n  timeout=0.2\n'
+            +' return original(self,input=input,timeout=timeout)\n'
+            +'subprocess.Popen.communicate=communicate\nraise SystemExit(bench.main())\n')
+        result = subprocess.run(['python3',str(driver),'--binary',str(candidate),
             '--parent',str(downstream.cli.BIN),'--sanitized',str(downstream.cli.BIN),
-            '--output',str(self.root/'deadline'),
-            '--sizes','1','--wide-widths','--repeats','1'],
-            env=dict(os.environ,PATH=str(folder)+os.pathsep+os.environ['PATH']),
+            '--output',str(self.root/'deadline'),'--sizes','1','--wide-widths','--repeats','1'],
             capture_output=True,text=True,timeout=45)
         self.assertNotEqual(result.returncode,0,result.stdout+result.stderr)
-        self.assertTrue(started.exists(),'deadline control did not reach measured candidate: '+result.stdout+result.stderr)
-        # Wait beyond the child's marker delay to detect a surviving descendant.
-        time.sleep(0.6)
+        self.assertTrue(ready.exists(),'measured child never became ready: '+result.stdout+result.stderr)
+        time.sleep(0.7)
         self.assertFalse(marker.exists(),'measured child outlived the deadline')
-        self.assertTrue(used.exists(),'candidate did not use the process-group timeout')
+        self.assertEqual(used.read_text(),'30')
+        self.assertIn('measured process group deadline exceeded',result.stderr)
 
     def test_scale_receipts(self):
         script = Path(__file__).with_name("benchmark_merged_callbacks.py")

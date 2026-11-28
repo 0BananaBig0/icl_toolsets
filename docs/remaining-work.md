@@ -2983,11 +2983,12 @@ remain open; item 1 stays excluded.
 
 ## Task220 callback failure evidence
 
-The merged-callback benchmark uses GNU timeout to terminate its measured process
-group, with a 27-second deadline and two-second kill grace inside the existing
-30-second Python deadline. The 10-second acceptance bound and memory limits stay
-in place. A real parent/child control detects a surviving delayed child; the
-short test deadline applies only to that deliberate sleeper.
+The merged-callback benchmark starts each measured command in its own process
+group and kills that group on completion or timeout, even after the parent exits.
+The 30-second Python deadline, 10-second acceptance bound and memory limits stay
+in place. A real TERM-resistant child signals readiness before its delayed write;
+the test requires the actual deadline diagnostic and rejects early fork failures.
+Its shortened deadline applies only to that deliberate sleeper.
 
 Split-file local-reset replay now executes the combined rewrite once, without
 adding its second input again. A native counter catches duplicate execution.

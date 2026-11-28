@@ -1,18 +1,21 @@
 # Callback failure evidence (Task220)
 
 Close three inherited findings. The merged-callback benchmark must terminate
-its measured process group on deadline, including children. Reuse the installed
-GNU timeout pattern already used by benchmark_merged_readback: wrap the native
-command with timeout --kill-after=2s 27s inside /usr/bin/time. Retain the Python
-30-second outer deadline, 10-second measured limit and existing memory bounds.
-The 27+2-second inner limit leaves cleanup time before the outer deadline. Avoid
-new wrappers, dependencies, runtime APIs or configurable deadlines in the driver.
+its measured process group on deadline, including children whose parent has
+already exited. Reuse the repository's Popen/start_new_session/killpg pattern.
+Retain the 30-second communicate deadline, 10-second measured limit and existing
+memory bounds. Always kill the isolated group when communication finishes or
+times out, then drain output after timeout and report the specific deadline
+failure. A parent exiting must not remove authority to stop remaining children.
+No new wrappers, dependencies, runtime APIs or configurable driver deadlines.
 
-Add a real Unix parent/child regression. A test-only PATH shim shortens the GNU
-deadline for the deliberate sleeper only; real generator controls retain 27s.
-Require proof the candidate started, timed out and did not leave a delayed
-child marker. The old driver should allow that marker before failing, exposing
-the missing cleanup without leaving a long-running child. No simulated clocks.
+A real Unix parent/child regression gives the child TERM resistance and writes
+readiness only after fork and signal setup. Its parent exits before the child's
+delayed write. A test-only communicate wrapper shortens the deadline solely for
+this deliberate sleeper and preserves real generator controls. Require child
+readiness, the actual driver deadline diagnostic and absence of the delayed
+marker after its scheduled time. A private fork-failure control must prove the
+old oracle falsely accepts an early error and the new one rejects it.
 
 MixedCallbackGroups.reset_replay must replay its combined reset rewrite once,
 without adding its already-incorporated second PDL input again. A maintained
@@ -36,3 +39,8 @@ needed, no rereview. Inherited 14 minus 3 candidate closures leaves 11 before
 new findings. Preserve 117 stashes and unrelated state; merge, verify, push,
 archive only owned helpers/ledger and retire the branch. Broader original tasks
 remain open and item 1 stays excluded.
+
+Review repair supersedes the original GNU timeout choice: it can return when
+its direct child exits while a TERM-resistant group member survives. The new
+isolated group remains under Python cleanup authority after parent exit.
+Descendants deliberately leaving that group remain outside this contract.
