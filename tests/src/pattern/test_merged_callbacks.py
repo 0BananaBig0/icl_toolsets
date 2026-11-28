@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Callback-containing merge calls retain complete serial execution."""
 import json
+import os
+import sys
+import time
 from pathlib import Path
 import subprocess
 import unittest
@@ -281,6 +284,38 @@ if {![catch {iGetReadData value}]} {error logical_callback_history}
             "; iRead endpoint 0; iApply; iNote [iGetReadData endpoint -bin]"
         output = downstream.observations.ModeledReadback.replay(self, MODEL, body)
         self.assertEqual(self.notes(output), [b"value=0b1001", b"0b1001"])
+
+    @unittest.skipUnless(hasattr(os,"fork"),"Unix process groups are required")
+    def test_benchmark_deadline_terminates_measured_children(self):
+        started, marker, used = (self.root/name for name in ('started','child-finished','timeout-used'))
+        candidate = self.root/'sleeper.py'
+        candidate.write_text('#!'+sys.executable+'\nimport os,time\nfrom pathlib import Path\n'
+            +'Path('+repr(str(started))+').touch()\n'
+            +'if os.fork()==0:\n time.sleep(0.5)\n Path('+repr(str(marker))+').touch()\n os._exit(0)\n'
+            +'time.sleep(1)\n')
+        candidate.chmod(0o755)
+        folder = self.root/'bin'; folder.mkdir()
+        shim = folder/'timeout'
+        shim.write_text('#!'+sys.executable+'\nimport os,sys\nfrom pathlib import Path\n'
+            +'args=sys.argv[1:]\nif len(args)>2 and args[2]=='+repr(str(candidate))+':\n'
+            +' assert args[:2]==["--kill-after=2s","27s"]\n'
+            +' Path('+repr(str(used))+').write_text("\\n".join(args))\n'
+            +' args[:2]=["--kill-after=0.1s","0.2s"]\n'
+            +'os.execv("/usr/bin/timeout",["timeout",*args])\n')
+        shim.chmod(0o755)
+        script = Path(__file__).with_name('benchmark_merged_callbacks.py')
+        result = subprocess.run(['python3',str(script),'--binary',str(candidate),
+            '--parent',str(downstream.cli.BIN),'--sanitized',str(downstream.cli.BIN),
+            '--output',str(self.root/'deadline'),
+            '--sizes','1','--wide-widths','--repeats','1'],
+            env=dict(os.environ,PATH=str(folder)+os.pathsep+os.environ['PATH']),
+            capture_output=True,text=True,timeout=45)
+        self.assertNotEqual(result.returncode,0,result.stdout+result.stderr)
+        self.assertTrue(started.exists(),'deadline control did not reach measured candidate: '+result.stdout+result.stderr)
+        # Wait beyond the child's marker delay to detect a surviving descendant.
+        time.sleep(0.6)
+        self.assertFalse(marker.exists(),'measured child outlived the deadline')
+        self.assertTrue(used.exists(),'candidate did not use the process-group timeout')
 
     def test_scale_receipts(self):
         script = Path(__file__).with_name("benchmark_merged_callbacks.py")

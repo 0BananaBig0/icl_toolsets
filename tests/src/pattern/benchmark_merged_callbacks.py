@@ -58,7 +58,8 @@ def main():
         command = [str(binaries[owner]), "--icl", str(icl), "--pdl", str(pdl),
                    "--top_module", "Chains", "--output", str(output), "--debug"]
         started = time.monotonic()
-        process = subprocess.run(["/usr/bin/time", "-f", "%e %M", "-o", str(metric), *command],
+        process = subprocess.run(["/usr/bin/time", "-f", "%e %M", "-o", str(metric),
+                                  "timeout", "--kill-after=2s", "27s", *command],
                                  capture_output=True, text=True, timeout=30)
         (root / "process.log").write_text(process.stdout + process.stderr)
         if process.returncode:

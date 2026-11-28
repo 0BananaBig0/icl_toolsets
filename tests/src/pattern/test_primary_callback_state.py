@@ -151,7 +151,10 @@ DataOutPort q[3:0] {Source storage;}
         model, commands = self.files(source, "iWrite p 3; iApply; iTake storage; iWrite storage 3; iApply; iWrite p 6; iApply")
         output = self.root / "result.pdl"
         output.write_bytes(b"retained artifact")
-        self.tool(model, commands, "result.pdl", ok=False)
+        message = self.tool(model, commands, "result.pdl", ok=False)
+        self.assertIn("cannot justify primary-input write requirements within the scan budget", message)
+        self.assertIn("\n  reserved storage = 0011\n", message)
+        self.assertIn("iWrite p 0b0110", message)
         self.assertEqual(output.read_bytes(), b"retained artifact")
 
     def test_end_state_callback_source_remains_constrained(self):
