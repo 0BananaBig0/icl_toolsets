@@ -63,6 +63,23 @@ Module Chains {{
 }}'''
         self.observe(model,128,value)
 
+    def test_parameter_sized_default_payload(self):
+        width = 160
+        value = (1 << 64) + 9
+        default = literal(width,value)
+        if not HEX_CONTROL: default = default.replace("160'd", "$W'd")
+        model = f'''Module Leaf {{
+ Parameter W=160; Parameter V={default};
+ DataOutPort q[$W-1:0] {{Source $V;}}
+}}
+Module Chains {{
+ Instance child Of Leaf {{}}
+ DataOutPort q[159:0] {{Source child.q;}}
+}}'''
+        self.observe(model,width,value)
+        self.assertIn("Source "+', '.join("1'b"+bit for bit in format(value,'0160b'))+';',
+                      (self.root/'debug/Chains.icl').read_text())
+
     def test_wide_enums_reset_and_capture(self):
         high=(1<<96)-1; mixed=(1<<95)+1
         model=f'''Module Chains {{

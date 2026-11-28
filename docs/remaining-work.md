@@ -2784,3 +2784,17 @@ results remain retained evidence. All117 stashes are preserved. The owned task
 branch is retired; only its ledger/helper are archived, with the detached
 worktree and sibling state retained. Evidence:
 `build/clock-replay-scratch-path-20261128/`.
+
+## Task213 literal payload and opaque history oracles
+
+The maintained decimal suite now observes an unoverridden160-bit parameter-sized
+default with sparse payload2^64+9 and pins its complete padded binary Source.
+The direct opaque omission-note fixture uses canonical SI0b0110, so both note
+flags distinguish queued execution from an incorrect eager sequence. The old
+tests accepted zero-default and eager-order controls; both strengthened oracles
+reject them through three actual native assertion failures. Two meta-tests pass.
+Fresh full changed-module and hexadecimal-control qualification follows in the
+receipt; producer behavior and all48 products stay unchanged. Two inherited
+test gaps are candidate closures:25 minus2 =23 pending independent confirmation.
+Evidence: `build/literal-history-oracles-20261128/`. Broader inventory and
+excluded coverage item1 remain open.
