@@ -82,11 +82,25 @@ sys.exit(code)
                              if line.startswith('iNote ') and 'modeled ' not in line]
                     self.assertEqual(notes,['0b'+'0'*160,'0b'+'10'*80])
 
+    def assert_receipt_counts(self, rows, missing_flat=False):
+        for row in rows:
+            absent = missing_flat and row['owner']=='current' and row['form']=='flat'
+            expected = 0 if row['mode']=='unobserved' else 2
+            self.assertEqual(row['literal_notes'],0 if absent else expected,row)
+        for row in rows:
+            self.assertNotIn('provider_queries',row)
+            self.assertIn('expected_provider_queries',row)
+            self.assertIn('expected_literal_notes',row)
+            self.assertEqual(row['expected_provider_queries'],
+                0 if row['form']=='generated' or row['mode']=='unobserved' else 2)
+            self.assertEqual(row['expected_literal_notes'],0 if row['mode']=='unobserved' else 2)
+
     def test_valid_complete_matrix(self):
         result, rows = self.measure()
         self.assertEqual(result.returncode, 0, result.stdout+result.stderr)
         self.assertEqual(len(rows), 24)
         self.assertTrue(all(row['observations_verified'] for row in rows))
+        self.assert_receipt_counts(rows)
 
     def test_missing_flat_model_fails_and_still_runs_generated_forms(self):
         result, rows = self.measure('missing-flat')
@@ -97,6 +111,7 @@ sys.exit(code)
                              for row in current), 6)
         self.assertEqual(sum(row['form'] == 'generated' and row['observations_verified']
                              for row in current), 6)
+        self.assert_receipt_counts(rows,missing_flat=True)
 
     def test_corrupt_unobserved_words_fail_against_serial_control(self):
         result, rows = self.measure('wrong-unobserved')

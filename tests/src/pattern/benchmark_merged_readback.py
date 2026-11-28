@@ -95,8 +95,9 @@ def main(make_fixture=fixture, wide_calls=1, applies_per_call=1):
             form=form, command=command, directory=str(folder), exit=code, seconds=seconds,
             peak_rss_kib=rss, time_bound_seconds=10, memory_bound_kib=memory_bound,
             within_bounds=within, observations_verified=not error, error=error,
-            provider_queries=0 if form == 'generated' or mode == 'unobserved' else calls,
-            literal_notes=len(notes), apply_groups=data.count(b'iApply\n'),
+            expected_provider_queries=0 if form == 'generated' or mode == 'unobserved' else calls,
+            literal_notes=len(actual_notes), expected_literal_notes=len(notes),
+            apply_groups=data.count(b'iApply\n'),
             raw_scan_operations=raw_count, shifted_bits=raw_count*width,
             output_sha256=hashlib.sha256(data).hexdigest())
         report['runs'].append(row)

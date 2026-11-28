@@ -3048,3 +3048,19 @@ Five owned ledger files and five helpers are archived; the completed branch is
 retired and the reusable detached worktree and siblings remain.
 Evidence: `build/asan-budget-selection-20261128/`. Broader original tasks remain
 open; item 1 stays excluded.
+
+## Task222 benchmark receipt counts
+
+Merged-readback receipts now count literal notes from the actual output,
+including zero notes when a flat-model run fails without output. They retain
+expected_literal_notes separately and label uninstrumented query counts as
+expected_provider_queries. Mixed-caller receipts label constant zero scan work
+as expected_csu_count and expected_shifted_bits; measured Apply/PIO counts and
+all existing checks remain intact. Native execution counters are not claimed.
+The two maintained test modules exercise successful and failed receipts.
+
+Two inherited findings are candidate closures: 10 minus 2 leaves 8 before
+review. Six full module reports qualify normal, static and default-leak SAN
+configurations: 75 methods with zero skips. All resource limits remain fixed.
+Evidence: `build/benchmark-receipt-counts-20261128/`. Broader original tasks
+remain open; item 1 stays excluded.
