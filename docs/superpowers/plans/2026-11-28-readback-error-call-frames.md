@@ -38,11 +38,16 @@ error_, Runtime getters and current diagnostic conventions. No new API.
 - [x] Add the existing-style frame append loop. Build and run full native
   readback and focused CLI; expected GREEN with same causes/locations/output
   protection and exact empty-stack control. Preserve final code/input hashes.
-- [ ] Run C++ quality, full make check, all15 isolated leak-native suites,
+- [x] Run C++ quality, full make check, all15 isolated leak-native suites,
   affected sanitizer CLI, source build/install, package member/whitespace and
   final identities. Read selected diff and commit. task-done runs
   python3 tests/.task214-check.py, expected all required gates pass.
-- [ ] One fresh whole-branch review; regrade, one verified blocking fix wave if
+- [x] One fresh whole-branch review; regrade, one verified blocking fix wave if
   needed, defer Minors, no rereview.
-- [ ] Merge master, verify merged artifacts/tests/identities, push, archive only
+- [x] Merge master, verify merged artifacts/tests/identities, push, archive only
   owned workspace/helpers, retire branch; preserve detached worktree.
+
+Completed at `f168d56`, merged and pushed as `0529ca6`. Independent
+review0C/0I/1newM;one inherited resolution,23 findings remain.31
+qualification gates and8merged-result checks pass;117 stashes preserved.
+Evidence:build/readback-error-call-frames-20261128/.

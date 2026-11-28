@@ -2821,7 +2821,19 @@ The native test first failed on missing nested frames; six real CLI subcases
 (direct/merged calls, all three getter types) also failed at that assertion.
 Both now pass, with original causes/locations and protected output/debug files.
 Full project, isolated sanitizer, C++ quality, source build/install and final
-identity/package qualification follow in the receipt. One inherited finding is
-a candidate closure:23 minus1 =22 pending independent confirmation. Evidence:
+identity/package qualification follow in the receipt. The inherited finding is
+resolved. Independent review found0 Critical,0 Important and1 new Minor
+issues;23 findings remain deferred. Evidence:
+`build/readback-error-call-frames-20261128/`. Broader inventory and excluded
+coverage item1 remain open.
+
+Task214 is merged and pushed as `0529ca6`. All31 qualification gates pass,
+including the full project run(228 Python reports/3572 methods),
+15 normal native suites,15 isolated default-leak native suites,9 sanitizer CLI
+modules,6 C++ quality checks and source build/install. Eight merged-result
+checks pass, including3 native suites and36 normal/static CLI methods. All4135
+final input hashes,48 qualified products and6 changed package members match;
+117 stashes remain. The owned branch is retired after archiving only its own
+ledger/helpers, preserving the reusable detached worktree and siblings. Evidence:
 `build/readback-error-call-frames-20261128/`. Broader inventory and excluded
 coverage item1 remain open.
