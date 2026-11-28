@@ -2915,6 +2915,17 @@ unboundAccessLinks and687default elaboration failures. Dated measurements and
 all runtime behavior remain unchanged.
 
 Packaging, unchanged4135inputs/48products and independent review follow in
-`build/model-guide-facts-20261128/`. Four inherited findings are candidate
-closures:22 minus4 =18 pending confirmation. Broader original tasks remain
+`build/model-guide-facts-20261128/`. Four inherited documentation findings
+are resolved. Independent review found0 Critical,0 Important and1 new Minor
+issues;19 findings remain deferred. Broader original tasks remain
 open;item1 stays excluded.
+
+Task217 is merged and pushed as `723c384`. Six scoped qualification gates
+pass:2fact methods/9source-flat-generated CLI processes, the2562-file corpus
+audit, unchanged4135inputs/48products, four exact package members and whitespace.
+Three merged-result checks pass on identical source/product/package hashes.
+Prior native/SAN/source-build/broad evidence remains retained by identity, not
+rerun.117stashes remain. Only this task’s5ledger files/3helpers are archived;
+the branch is retired and reusable detached worktree/siblings preserved.
+Evidence: `build/model-guide-facts-20261128/`. Broader original inventory and
+excluded coverage item1 remain open.

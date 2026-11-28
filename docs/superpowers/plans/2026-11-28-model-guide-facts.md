@@ -36,9 +36,15 @@ Task216qualified4135inputs/48products. Produces prose consistent with these.
   fill0b10 after explicitX load,1032/44/687 audit outcomes.
 - [x] Correct only four errata. Author fact/readability check expected all four
   claims agree with fresh output/source;no behavior change.
-- [ ] Archive/remove private nested probe;make dist;verify four exact members,
+- [x] Archive/remove private nested probe;make dist;verify four exact members,
   4135unchanged inputs/48products and whitespace. Commit selected diff;
   task-done runs python3 tests/.task217-check.py,expected all checks pass.
-- [ ] Fresh whole-branch review;regrade/fix blocking findings once,ledger Minors.
-- [ ] Merge master,verify merged identities/package/checks,push,archive owned
+- [x] Fresh whole-branch review;regrade/fix blocking findings once,ledger Minors.
+- [x] Merge master,verify merged identities/package/checks,push,archive owned
   workspace/helpers,retire branch and keep reusable detached worktree.
+
+Completed at `c7cb33b`, merged and pushed as `723c384`. Independent
+review0C/0I/1newM;four inherited resolutions,19 findings remain.6 scoped
+qualification gates and3merged checks pass;117stashes preserved. Full214
+evidence is retained for unchanged logic, not rerun.
+Evidence:build/model-guide-facts-20261128/.
