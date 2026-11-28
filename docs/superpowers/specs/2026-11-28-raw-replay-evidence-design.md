@@ -32,3 +32,10 @@ no rereview. Inherited 17 minus 3 candidate closures = 14 before new findings.
 Preserve 117 stashes and unrelated state; integrate, verify, push and retire the
 owned branch after archiving only owned helpers/ledger. Item 1 stays excluded;
 broader original inventory remains open.
+
+Review repair: preserve the low nibble at widths 5–7 by choosing the second
+added bit at max(4, width//2). At width 5 only bit 4 lies above the low nibble,
+so both payloads use that upper position while their low nibbles distinguish
+them. Widths 6–7 use bit 4 for the second payload. Literal three-call checks
+cover widths 5–16; a native 5/6/7-bit matrix and all three full-module variants
+verify the fix. Previously measured 4/512/1,024-bit fixtures remain byte-identical.

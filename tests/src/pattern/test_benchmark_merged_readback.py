@@ -57,6 +57,15 @@ sys.exit(code)
             ('0b0001','0b0000'),('0b0010','0b0001'),
             ('0b0100','0b0010'),('0b0111','0b0100')])
 
+    def test_small_raw_widths_preserve_low_nibbles(self):
+        from benchmark_raw_merge_calls import fixture
+        for width in range(5,17):
+            with self.subTest(width=width):
+                _, _, frames = fixture(3,'merged',width)
+                self.assertEqual([int(si,2)&15 for si,_ in frames],[1,2,4,7,7,12])
+                self.assertEqual([int(so,2)&15 for _,so in frames],[0,1,2,4,7,7])
+                self.assertTrue(all(len(si)==len(so)==width+2 for si,so in frames))
+
     def test_wide_raw_matrix_captures_preceding_upper_bits(self):
         result, rows = self.measure(widths=(160,))
         self.assertEqual(result.returncode,0,result.stdout+result.stderr)

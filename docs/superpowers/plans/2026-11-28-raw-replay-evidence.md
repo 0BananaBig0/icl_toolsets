@@ -46,3 +46,10 @@ source/flat/generated/local-reset replay helpers. No new public interface.
   task-done runs python3 tests/.task219-check.py, expected all checks pass.
 - [ ] Fresh review; regrade and repair blocking findings once if necessary.
 - [ ] Merge, verify, push, archive owned ledger/helpers and retire branch.
+
+Review repair: preserve the low nibble at widths 5–7 by choosing the second
+added bit at max(4, width//2). At width 5 only bit 4 lies above the low nibble,
+so both payloads use that upper position while their low nibbles distinguish
+them. Widths 6–7 use bit 4 for the second payload. Literal three-call checks
+cover widths 5–16; a native 5/6/7-bit matrix and all three full-module variants
+verify the fix. Previously measured 4/512/1,024-bit fixtures remain byte-identical.

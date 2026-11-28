@@ -31,7 +31,7 @@ def fixture(calls, mode, width=4):
         first, second = (index*3+1) % 16, (index*5+2) % 16
         if width > 4:
             first |= 1 << (width-1)
-            second |= 1 << (width//2)
+            second |= 1 << max(4,width//2)
         word = lambda value: '0b'+format(value, '0%db' % width)
         text += 'iCall access %s %s %s\n' % (word(previous), word(first), word(second))
         expected.extend([(word(first), word(previous)), (word(second), word(first))])
