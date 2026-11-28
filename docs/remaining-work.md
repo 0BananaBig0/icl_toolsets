@@ -2997,7 +2997,19 @@ value and blocked write, while preserving the prior output artifact. A private
 real-native error-corruption control distinguishes the old false acceptance
 from the stronger assertion. Generator/runtime behavior remains unchanged.
 
-Three inherited findings are candidate closures: 14 minus 3 leaves 11 before
-review. Qualification and independent review are recorded in
+Three inherited findings are resolved. Independent review found
+0 Critical, 2 Important (fixed) and 0 new Minor issues; 11 findings remain deferred. Qualification and independent review are recorded in
 `build/callback-failure-evidence-20261128/`. Broader original tasks remain open;
 item 1 stays excluded.
+
+Task220 is merged and pushed as `8959a28`. All 17 qualification gates pass:
+nine module reports covering 144 methods, five RED-to-GREEN controls, and exact
+source/product/package checks. Nine merged checks pass, including 96 normal/static
+module methods. The repaired timeout regression requires a ready TERM-resistant
+child, an actual deadline failure and no delayed write; early fork failures
+are rejected. All 4,135 inputs, 48 unchanged products and seven package members
+match qualified bytes. Native/build/broad evidence remains retained by identity.
+All 117 stashes remain. Five owned ledger files and five helpers are archived;
+the completed branch is retired and the reusable detached worktree and siblings
+remain. Evidence: `build/callback-failure-evidence-20261128/`. Broader original
+tasks remain open; item 1 stays excluded.

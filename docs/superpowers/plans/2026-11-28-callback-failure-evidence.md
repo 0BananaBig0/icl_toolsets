@@ -36,19 +36,26 @@ build/callback-failure-evidence-20261128.
 **Interfaces:** Existing benchmark command/JSON receipts, split PDL/reset rewrite
 and native ownership failure. No public interface changes.
 
-- [ ] Add real descendant deadline and split-replay tests plus native diagnostic
+- [x] Add real descendant deadline and split-replay tests plus native diagnostic
   corruption control. Run parent code; expect three failure controls with no
   setup errors and retain actual original error for its exact cause.
-- [ ] Isolate the measured group and guarantee cleanup, remove duplicate second input from
+- [x] Isolate the measured group and guarantee cleanup, remove duplicate second input from
   reset rewrite replay and assert exact ownership cause. Expected focused GREEN.
-- [ ] Run all three complete modules normal/static/default-leak SAN (nine reports),
+- [x] Run all three complete modules normal/static/default-leak SAN (nine reports),
   archive private probe, package seven exact members, verify final inputs/products
   and whitespace. Commit selected diff; task-done runs python3 tests/.task220-check.py.
-- [ ] Fresh review; regrade and repair blocking findings in one wave if needed.
-- [ ] Merge, verify, push, archive owned ledger/helpers and retire branch.
+- [x] Fresh review; regrade and repair blocking findings in one wave if needed.
+- [x] Merge, verify, push, archive owned ledger/helpers and retire branch.
 
 Review repair: actual TERM-resistant child outlives the original GNU deadline
 when its parent exits. Use Popen with a new session, killpg cleanup independent
 of parent status and explicit timeout reporting. Move readiness into the child
 after fork/signal setup; reject early fork failures. Both findings require
 RED-to-GREEN controls, full nine-module qualification and updated packaging.
+
+Completed at `6495bf9`, merged and pushed as `8959a28`. Independent
+review: 0 Critical, 2 Important (fixed), 0 new Minor issues. Three inherited findings
+are resolved and 11 remain deferred. All 17 qualification gates and nine
+merged-result checks pass. All 117 stashes are preserved. Broader generator
+evidence remains retained by identity.
+Evidence: `build/callback-failure-evidence-20261128/`.
