@@ -106,7 +106,8 @@ def main(make_fixture=fixture, wide_calls=1, applies_per_call=1):
         return data, output, folder/'debug/Chains.icl'
 
     cases = [(kind, size, 4) for kind in ('pio', 'raw') for size in args.sizes]
-    cases += [(kind, wide_calls, width) for kind in ('pio', 'raw') for width in args.wide_widths]
+    cases += [(kind, max(2,wide_calls) if kind=='raw' else wide_calls, width)
+              for kind in ('pio', 'raw') for width in args.wide_widths]
     references = {}
     for kind, calls, width in cases:
         for owner, mode in [('parent', 'serial'), ('current', 'serial'),
