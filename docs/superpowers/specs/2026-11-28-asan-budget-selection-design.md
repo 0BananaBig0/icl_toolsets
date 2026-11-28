@@ -17,7 +17,7 @@ meta-check is inapplicable to the intentionally excluded sanitizer wide case;
 report both sanitizer skips explicitly. Observe the old decorator's false skip
 as an assertion failure before changing it. Then run the full module under both
 normal environments on normal/static binaries, and once on default-leak SAN:
-five reports, 55 reported methods, 53 executed and two intentional SAN skips.
+five reports, 60 reported methods, 58 executed and two intentional SAN skips.
 Record actual native version/probe responses for all three products.
 
 Only tests/src/pattern/test_primary_pin_literals.py plus tracker/spec/plan change.
@@ -33,3 +33,10 @@ needed, no rereview. Inherited 11 minus 1 candidate closure leaves 10 before
 new findings. Archive only owned helpers/ledger, merge/verify/push and retire
 branch while preserving the reusable worktree and unrelated state. Broader
 original tasks remain open and item 1 stays excluded.
+
+Review repair: require exit 0 from the version probe before classifying its
+stderr. Report an inconclusive probe with its status and original stderr. A
+harmless executable returns 2 for --version and marks any attempted wide command;
+the maintained regression must fail before the fix and confirm no attempt after
+the fix, without launching an unqualified wide sanitizer workload. Final five
+reports contain 60 reported methods, 58 executed and two intentional SAN skips.

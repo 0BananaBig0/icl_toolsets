@@ -3029,3 +3029,9 @@ review. Qualification distinguishes all normal/static executions from the two
 intentional sanitizer skips (wide case and its normal/static meta-check).
 Evidence: `build/asan-budget-selection-20261128/`. Broader original tasks remain
 open; item 1 stays excluded.
+
+Task221 review repair rejects failed runtime probes before selecting any budget
+case and retains their exit status and original stderr. A harmless failing
+executable proves the wide command is never attempted after an inconclusive
+probe. Final qualification reports 60 methods, with 58 executed and two explicit
+sanitizer skips.

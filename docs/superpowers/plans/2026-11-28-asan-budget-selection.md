@@ -36,9 +36,16 @@ and qualified product manifests. No native behavior or API changes.
 - [ ] Probe actual runtime once and replace environment-only decorator.
   Expected focused GREEN and the same sanitizer exclusion.
 - [ ] Run full module normal/static with and without ASAN_OPTIONS, plus default-
-  leak SAN; expected 5 reports/55 reported methods/53 executed/2 intentional SAN
+  leak SAN; expected 5 reports/60 reported methods/58 executed/2 intentional SAN
   skips. Record three native probe responses; package four exact files and verify
   4,135 final inputs/48 unchanged products/whitespace. Commit selected diff;
   task-done runs python3 tests/.task221-check.py.
 - [ ] Fresh review; regrade and repair blocking findings once if necessary.
 - [ ] Merge, verify, push, archive owned ledger/helpers and retire branch.
+
+Review repair: require exit 0 from the version probe before classifying its
+stderr. Report an inconclusive probe with its status and original stderr. A
+harmless executable returns 2 for --version and marks any attempted wide command;
+the maintained regression must fail before the fix and confirm no attempt after
+the fix, without launching an unqualified wide sanitizer workload. Final five
+reports contain 60 reported methods, 58 executed and two intentional SAN skips.
