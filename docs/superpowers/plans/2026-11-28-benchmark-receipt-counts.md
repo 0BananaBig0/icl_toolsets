@@ -32,15 +32,21 @@ private tests/.task222-* helpers; build/benchmark-receipt-counts-20261128.
 **Interfaces:** Existing JSON receipts, actual_notes parse and two active tests.
 No native/API changes or dependencies between separate tasks.
 
-- [ ] Strengthen valid/missing-flat receipt assertions and mixed constant-label
+- [x] Strengthen valid/missing-flat receipt assertions and mixed constant-label
   assertions; full normal modules must fail by assertions, not harness errors.
-- [ ] Derive literal_notes from actual_notes; add expected_literal_notes and
+- [x] Derive literal_notes from actual_notes; add expected_literal_notes and
   rename expected_provider_queries/expected_csu_count/expected_shifted_bits.
   Repeat full normal modules; expected GREEN.
-- [ ] Run both whole modules normal/static/default-leak SAN, expected six reports,
+- [x] Run both whole modules normal/static/default-leak SAN, expected six reports,
   75 methods/zero skips. Package seven exact files; check 4,135 inputs/48 products,
   retained evidence and whitespace. Commit selected diff; task-done command:
   python3 tests/.task222-check.py.
-- [ ] Fresh whole-branch review; regrade and repair blocking findings once.
-- [ ] Merge, verify both modules normal/static, push, archive owned state,
+- [x] Fresh whole-branch review; regrade and repair blocking findings once.
+- [x] Merge, verify both modules normal/static, push, archive owned state,
   detach retained worktree and retire merged branch; close tracker and push.
+
+Completed at `390c08a`, merged and pushed as `da1be52`. Independent
+review: 0 Critical, 0 Important, 0 new Minor issues. Two inherited findings
+are resolved and 8 remain deferred. Ten qualification gates and seven
+merged checks pass. All 117 stashes remain. Broader evidence is retained by
+identity. Evidence: `build/benchmark-receipt-counts-20261128/`.
