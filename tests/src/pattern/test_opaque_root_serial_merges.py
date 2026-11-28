@@ -113,7 +113,7 @@ iNote absent; iNote [iGetStatus]
                 self.continued(PARALLEL,'''iProc second {} {
  iScan client -chain second 7 -si 65 -so 0bx -stable; iApply
 }
-iProc first {} {iScan client -chain first 4 -si 6 -so 0bxxxx -stable; iApply}
+iProc first {} {iScan client -chain first 4 -si 0b0110 -so 0bxxxx -stable; iApply}
 iReset; iScan client -chain first 4 -si 9 -so 0b10xx -stable; iApply
 iMerge -begin; iCall second
 iNote %s {modeled raw history omitted iScan client -chain first 4 -si 0b0110 -so 0bxxxx -stable}
