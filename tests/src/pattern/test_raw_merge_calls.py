@@ -34,11 +34,15 @@ class RawMergeCalls(unittest.TestCase):
             other = self.root/'second.pdl'
             other.write_text(second)
             extra += ['--pdl', str(other)]
+        original_reset, flat_reset = self.root/'reset-source.pdl', self.root/'reset-flat.pdl'
         if reset:
-            extra += ['--local_reset', str(self.root/'reset.pdl')]
+            extra += ['--local_reset', str(original_reset)]
+        flat_extra = extra.copy()
+        if reset:
+            flat_extra[flat_extra.index('--local_reset')+1] = str(flat_reset)
         output = self.run_tool(model, pdl, top=top, inputs=inputs, extra=extra)
         self.assertEqual(output, self.run_tool(self.root/'debug'/f'{top}.icl', pdl,
-                         'flat/result.pdl', top, extra=extra))
+                         'flat/result.pdl', top, extra=flat_extra))
         replay_extra = ['--model_readback'] if modeled else []
         self.assertEqual(output, self.run_tool(model, self.root/'result.pdl',
                          'generated/result.pdl', top, inputs=inputs, extra=replay_extra))
@@ -48,8 +52,9 @@ class RawMergeCalls(unittest.TestCase):
             self.assertEqual(output, self.run_tool(model, serial, 'serial/result.pdl',
                              top, inputs=inputs, extra=replay_extra))
         if reset:
-            rewritten = (self.root/'reset.pdl').read_text()
-            self.assertEqual(output, self.run_tool(model, self.root/'reset.pdl',
+            rewritten = original_reset.read_text()
+            self.assertEqual(rewritten,flat_reset.read_text(),'source and flat reset rewrites differ')
+            self.assertEqual(output, self.run_tool(model, original_reset,
                              'rewritten/result.pdl', top, inputs=inputs, extra=replay_extra))
             return output, rewritten
         return output

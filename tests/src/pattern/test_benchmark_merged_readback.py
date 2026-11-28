@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """The maintained matrix must reject missing replay and wrong control output."""
 import json
+from pathlib import Path
 import subprocess
 import unittest
 
@@ -10,7 +11,7 @@ import test_simultaneous_scan_chains as cli
 class BenchmarkMergedReadback(unittest.TestCase):
     setUp = cli.SimultaneousChains.setUp
 
-    def measure(self, fault='', script_name='benchmark_merged_readback', size='2'):
+    def measure(self, fault='', script_name='benchmark_merged_readback', size='2', widths=()):
         wrapper = self.root/'driver.py'
         wrapper.write_text('''#!/usr/bin/python3
 import subprocess
@@ -38,9 +39,39 @@ sys.exit(code)
         options = ['--sanitized', str(wrapper)] if fault == 'san-compare' else []
         result = subprocess.run(['python3', str(script), '--binary', str(cli.BIN if options else wrapper),
             '--parent', str(cli.BIN), '--output', str(output), '--sizes', size,
-            '--wide-widths', '--repeats', '1', *options], capture_output=True, text=True, timeout=90)
+            '--wide-widths', *map(str,widths), '--repeats', '1', *options], capture_output=True, text=True, timeout=90)
         rows = json.loads((output/'results.json').read_text())['runs']
         return result, rows
+
+    def test_wide_raw_frames_pin_upper_bits(self):
+        from benchmark_raw_merge_calls import fixture
+        for width in (160, 512, 1024):
+            with self.subTest(width=width):
+                _, commands, frames = fixture(1, 'merged', width)
+                zero = '0b'+'0'*width
+                first = '0b'+'1'+'0'*(width-2)+'1'
+                second = '0b'+'0'*(width//2-1)+'1'+'0'*(width//2-2)+'10'
+                self.assertEqual(frames, [(first,zero),(second,first)])
+                self.assertIn(f'iCall access {zero} {first} {second}\n',commands)
+        self.assertEqual(fixture(2,'merged',4)[2], [
+            ('0b0001','0b0000'),('0b0010','0b0001'),
+            ('0b0100','0b0010'),('0b0111','0b0100')])
+
+    def test_wide_raw_matrix_captures_preceding_upper_bits(self):
+        result, rows = self.measure(widths=(160,))
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        self.assertEqual(len(rows),48)
+        wide = [row for row in rows if row['width']==160]
+        self.assertEqual(len(wide),24)
+        for row in wide:
+            with self.subTest(owner=row['owner'],mode=row['mode'],kind=row['kind'],form=row['form']):
+                self.assertTrue(row['observations_verified'],row)
+                self.assertEqual(row['calls'],2 if row['kind']=='raw' else 1)
+                if row['kind']=='raw' and row['mode']!='unobserved':
+                    output = (Path(row['directory'])/'result.pdl').read_text()
+                    notes = [line[6:] for line in output.splitlines()
+                             if line.startswith('iNote ') and 'modeled ' not in line]
+                    self.assertEqual(notes,['0b'+'0'*160,'0b'+'10'*80])
 
     def test_valid_complete_matrix(self):
         result, rows = self.measure()

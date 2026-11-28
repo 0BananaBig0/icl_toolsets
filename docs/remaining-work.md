@@ -2952,3 +2952,20 @@ Five owned ledger files and five helpers are archived; the completed branch is
 retired and the reusable detached worktree and siblings remain.
 Evidence: `build/inventory-output-errors-20261128/`. Broader original tasks
 remain open; item 1 stays excluded.
+
+## Task219 raw replay evidence
+
+Raw-merge local-reset checks now preserve and compare separate source and flat
+rewrite files before replaying the source rewrite. A real-native corruption
+control demonstrates that a changed flat artifact can no longer replace the
+source artifact unnoticed. Wide raw-merge fixtures set distinct upper and middle
+payload bits; narrow four-bit fixtures keep their previous values. Wide raw
+readback matrices use at least two calls so a later capture observes an actual
+preceding high-bit load. PIO call counts and larger raw requests retain their
+meaning. No generator or runtime behavior changes.
+
+Three inherited findings are candidate closures: 17 minus 3 leaves 14 before
+review. Qualification and independent review are recorded in
+`build/raw-replay-evidence-20261128/`. Existing performance limits and the open
+1,024-bit PIO memory finding remain; broader original tasks remain open and
+item 1 stays excluded.
