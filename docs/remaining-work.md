@@ -2808,3 +2808,20 @@ The owned branch is retired; only its five ledger files and two helpers are
 archived, retaining the detached worktree and siblings. Raw initial failure,
 corruption controls, final logs, review and source archive remain under
 `build/literal-history-oracles-20261128/`. Broader inventory/item1 stay open/excluded.
+
+## Task214 deferred readback error call frames
+
+Modeled provider errors now append the failing operation's stored call frames
+using the existing diagnostic format and order. The failing origin, underlying
+cause and callback-preservation prefix remain intact; empty stacks retain their
+old message. Sticky errors preserve exactly one copy of each frame across read,
+clear and status queries. Successful execution adds no frame traversal.
+
+The native test first failed on missing nested frames; six real CLI subcases
+(direct/merged calls, all three getter types) also failed at that assertion.
+Both now pass, with original causes/locations and protected output/debug files.
+Full project, isolated sanitizer, C++ quality, source build/install and final
+identity/package qualification follow in the receipt. One inherited finding is
+a candidate closure:23 minus1 =22 pending independent confirmation. Evidence:
+`build/readback-error-call-frames-20261128/`. Broader inventory and excluded
+coverage item1 remain open.

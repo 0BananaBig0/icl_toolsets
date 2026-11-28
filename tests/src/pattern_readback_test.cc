@@ -478,6 +478,65 @@ Module Top {
   }
 }
 
+void TestDeferredReadbackErrorFrames() {
+  pattern::Design design;
+  design.AddIcl("deferred_error.icl", R"(
+Module Top {
+ ScanInPort si[1:0]; ScanOutPort so[1:0]; SelectPort sel;
+ CaptureEnPort ce; ShiftEnPort se; UpdateEnPort ue; TCKPort tck;
+ ScanInterface client {
+  Port sel; Port ce; Port se; Port ue; Port tck;
+  Chain first {Port si[1]; Port so[1]; DefaultLoadValue 4'b0;}
+  Chain second {Port si[0]; Port so[0]; DefaultLoadValue 7'b0;}
+ }
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  for (bool nested : {false, true}) {
+    const std::vector<std::string> frames =
+        nested ? std::vector<std::string>{"iCall outer at outer.pdl:3",
+                                          "iCall inner at inner.pdl:5"}
+               : std::vector<std::string>{};
+    pattern::Runtime::StatusReadback status;
+    const auto readback = pattern::MakeModeledReadback(netlist, false, &status);
+    std::vector<pattern::Operation> operations{
+        {"iReset", {}, "reset.pdl:1", {}},
+        {"iScan",
+         {"client", "-chain", "first", "4", "-si", "9"},
+         "worker.pdl:3",
+         frames},
+        {"iApply", {}, "worker.pdl:4", frames}};
+    const auto* update = readback(operations, false);
+    Require(update && update->scans.size() == 1 && update->failures == 0,
+            "valid prefix publishes before a later queued failure");
+    operations.push_back({"iScan",
+                          {"client", "-chain", "second", "7", "-si", "65"},
+                          "worker.pdl:8",
+                          frames});
+    operations.push_back({"iApply", {}, "worker.pdl:9", frames});
+    std::string expected =
+        "worker.pdl:9: opaque parallel scan chain length is unknown";
+    if (nested) {
+      expected +=
+          "\n  while iCall outer at outer.pdl:3"
+          "\n  while iCall inner at inner.pdl:5";
+    }
+    for (int query = 0; query < 3; ++query) {
+      std::string message;
+      try {
+        if (query == 2) {
+          status(operations);
+        } else {
+          readback(operations, query == 1);
+        }
+      } catch (const std::runtime_error& error) {
+        message = error.what();
+      }
+      Require(message == expected,
+              "deferred error retains exact cause and ordered frames once");
+    }
+  }
+}
+
 void TestOpaqueChildMergedReadback() {
   pattern::Design design;
   design.AddIcl("opaque_merge.icl", R"(
@@ -1376,6 +1435,7 @@ int main() {
     TestMergeMarkersAreEventFree();
     TestMergedRawReadbackPlanes();
     TestMergedReadbackGuardPreflight();
+    TestDeferredReadbackErrorFrames();
     TestOpaqueChildMergedReadback();
     TestWriteCallbackEndpointReadback();
     TestCallbackAssumptionsCannotBecomeActualData();

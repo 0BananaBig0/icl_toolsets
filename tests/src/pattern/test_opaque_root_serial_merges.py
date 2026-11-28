@@ -229,6 +229,39 @@ iMerge -begin; iMerge -end
 ''','iNote [iGetReadData client -bin]; iNote [iGetStatus]\n',[b'0bxxxxxxxx',b'0'])
         self.assertEqual(generated.count(b'\niApply\n'),1)
 
+    def test_later_getter_retains_nested_failing_call_frames(self):
+        for merged in (False,True):
+            for getter in ('iGetReadData client -chain second -bin',
+                           'iGetMiscompares client -chain second -bin',
+                           'iGetStatus'):
+                with self.subTest(merged=merged,getter=getter):
+                    icl,pdl,out = (self.root/n for n in
+                                   ('source.icl','source.pdl','protected.pdl'))
+                    icl.write_text(PARALLEL)
+                    call = ('iMerge -begin; iCall outer; iMerge -end'
+                            if merged else 'iCall outer')
+                    pdl.write_text('''iPDLLevel 1
+iProcsForModule Chains
+iProc inner {} {
+ iScan client -chain first 4 -si 9 -so 0; iApply
+ iScan client -chain second 7 -si 65 -so 0; iApply
+}
+iProc outer {} {iCall inner}
+iReset
+'''+call+'\niNote ['+getter+']\n')
+                    protected = [out,self.root/'debug/Chains.icl']
+                    for path in protected:
+                        path.parent.mkdir(parents=True,exist_ok=True)
+                        path.write_bytes(b'keep previous artifact\n')
+                    error = self.run_tool(icl,pdl,'protected.pdl',ok=False)
+                    self.assertIn('source.pdl:10:8:',error)
+                    self.assertRegex(error,r'source\.pdl:5:[0-9]+: opaque parallel scan chain length is unknown')
+                    frames = ['while iCall outer at ','while iCall inner at ']
+                    for frame in frames: self.assertEqual(error.count(frame),1,error)
+                    self.assertLess(error.index(frames[0]),error.index(frames[1]))
+                    for path in protected:
+                        self.assertEqual(path.read_bytes(),b'keep previous artifact\n')
+
     def test_invalid_calls_modes_and_unknown_lengths_preserve_existing_output(self):
         cases = [
             (SCALAR,'iRunLoop 1; iScan client 8 -si 150; iApply','opaque',()),

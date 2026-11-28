@@ -190,12 +190,16 @@ class ModelReadback {
         try {
           Process(op);
         } catch (const std::exception& error) {
-          throw std::runtime_error(
+          std::string message =
               op.origin + ": " +
               (op.callback_preserved.empty()
                    ? ""
                    : "while preserving callback caller goals: ") +
-              error.what());
+              error.what();
+          for (const auto& frame : op.call_stack) {
+            message += "\n  while " + frame;
+          }
+          throw std::runtime_error(message);
         }
       }
       updates_.failures = failures_;
