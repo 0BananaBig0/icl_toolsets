@@ -2837,3 +2837,23 @@ final input hashes,48 qualified products and6 changed package members match;
 ledger/helpers, preserving the reusable detached worktree and siblings. Evidence:
 `build/readback-error-call-frames-20261128/`. Broader inventory and excluded
 coverage item1 remain open.
+
+## Task215 recorded operation and live getter ancestry
+
+Recorded operation calls now appear in a labelled four-space block; live Tcl
+getter unwinding retains its existing two-space while lines. Distinct roles
+preserve both independent source locations and every repeated recursive frame.
+Empty-stack messages and cached read/clear/status errors remain exact. The
+native cases cover empty, distinct and identical frame vectors;19CLI methods
+include completed calls and active getters at depths0/2, all three getters and
+direct/merged nesting, with ordered role blocks and protected output/debug bytes.
+
+Old producer tests reject missing role formatting; final native and CLI checks
+pass. Scoped qualification covers normal/static/SAN callers, affected native
+suites, C++ quality, source build/install and final input/product/package hashes.
+Task214's228-report/3572-method full run is retained only for unchanged execution
+logic, with exact provider source identity outside the formatting fragment; it
+is not rerun or described as a fresh full pass. One inherited finding is a
+candidate closure:23 minus1 =22 pending independent confirmation. Evidence:
+`build/readback-diagnostic-ancestry-20261128/`. Broader inventory and excluded
+coverage item1 remain open.

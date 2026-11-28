@@ -196,8 +196,11 @@ class ModelReadback {
                    ? ""
                    : "while preserving callback caller goals: ") +
               error.what();
+          if (!op.call_stack.empty()) {
+            message += "\n  recorded operation calls:";
+          }
           for (const auto& frame : op.call_stack) {
-            message += "\n  while " + frame;
+            message += "\n    " + frame;
           }
           throw std::runtime_error(message);
         }

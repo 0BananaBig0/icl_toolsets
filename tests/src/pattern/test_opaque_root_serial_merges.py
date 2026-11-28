@@ -256,11 +256,60 @@ iReset
                     error = self.run_tool(icl,pdl,'protected.pdl',ok=False)
                     self.assertIn('source.pdl:10:8:',error)
                     self.assertRegex(error,r'source\.pdl:5:[0-9]+: opaque parallel scan chain length is unknown')
-                    frames = ['while iCall outer at ','while iCall inner at ']
+                    self.assertEqual(error.count('\n  recorded operation calls:\n'),1,error)
+                    frames = ['    iCall outer at ','    iCall inner at ']
                     for frame in frames: self.assertEqual(error.count(frame),1,error)
                     self.assertLess(error.index(frames[0]),error.index(frames[1]))
+                    self.assertNotIn('\n  while iCall ',error)
                     for path in protected:
                         self.assertEqual(path.read_bytes(),b'keep previous artifact\n')
+
+    def test_active_getter_distinguishes_recorded_and_live_calls(self):
+        for merged in (False,True):
+            for depth in (0,2):
+                for getter in ('iGetReadData client -chain second -bin',
+                               'iGetMiscompares client -chain second -bin',
+                               'iGetStatus'):
+                    with self.subTest(merged=merged,depth=depth,getter=getter):
+                        icl,pdl,out = (self.root/n for n in
+                                       ('source.icl','source.pdl','protected.pdl'))
+                        icl.write_text(PARALLEL)
+                        call = ('iMerge -begin; iCall outer; iMerge -end'
+                                if merged else 'iCall outer')
+                        pdl.write_text('''iPDLLevel 1
+iProcsForModule Chains
+iProc inner {depth} {
+ if {$depth>0} {iCall inner [expr {$depth-1}]; return}
+ iScan client -chain first 4 -si 9 -so 0; iApply
+ iScan client -chain second 7 -si 65 -so 0; iApply
+ iNote ['''+getter+''']
+}
+iProc outer {} {iCall inner '''+str(depth)+'''}
+iReset
+'''+call+'\n')
+                        protected = [out,self.root/'debug/Chains.icl']
+                        for path in protected:
+                            path.parent.mkdir(parents=True,exist_ok=True)
+                            path.write_bytes(b'keep previous artifact\n')
+                        error = self.run_tool(icl,pdl,'protected.pdl',ok=False)
+                        self.assertIn('source.pdl:7:9:',error)
+                        self.assertRegex(error,r'source\.pdl:6:[0-9]+: opaque parallel scan chain length is unknown')
+                        self.assertEqual(error.count('\n  recorded operation calls:\n'),1,error)
+                        lines = error.split('\n  recorded operation calls:\n',1)[1].splitlines()
+                        recorded = [line for line in lines if line.startswith('    iCall ')]
+                        live = [line for line in lines if line.startswith('  while iCall ')]
+                        self.assertEqual(len(recorded),depth+2,error)
+                        self.assertEqual(len(live),depth+2,error)
+                        self.assertEqual(lines[:2*(depth+2)],recorded+live,error)
+                        self.assertTrue(recorded[0].startswith('    iCall outer at '),error)
+                        self.assertTrue(live[-1].startswith('  while iCall outer at '),error)
+                        self.assertTrue(all(line.startswith('    iCall inner at ') for line in recorded[1:]),error)
+                        self.assertTrue(all(line.startswith('  while iCall inner at ') for line in live[:-1]),error)
+                        if depth==2:
+                            self.assertEqual(recorded[2],recorded[3])
+                            self.assertEqual(live[0],live[1])
+                        for path in protected:
+                            self.assertEqual(path.read_bytes(),b'keep previous artifact\n')
 
     def test_invalid_calls_modes_and_unknown_lengths_preserve_existing_output(self):
         cases = [
