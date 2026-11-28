@@ -123,7 +123,7 @@ def main():
             "apply_count": output_counts["iApply"],
             "pio_frame_count": pio_frames,
             "empty_apply_count": output_counts["iApply"] - pio_frames,
-            "csu_count": 0, "shifted_bits": 0,
+            "expected_csu_count": 0, "expected_shifted_bits": 0,
             "endpoint_writes": endpoint, "ordinary_spare_writes": spare,
             "callback_postconditions": postconditions,
             "fresh_getters": pdl.read_text().count("iGetReadData spare_out -dec"),
